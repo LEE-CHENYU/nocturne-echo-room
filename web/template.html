@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Nocturne Echo Room</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -544,7 +545,7 @@ function drawEcho() {
   }
   g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillStyle = COL.ink2; g.font = '11px "Instrument Sans", sans-serif';
   g.fillText('direct', ms2x(direct) + 4, db2y(0) + 12);
-  if (isFinite(first)) { g.strokeStyle = 'rgba(233,230,223,0.35)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(ms2x(first), 8); g.lineTo(ms2x(first), h - padB); g.stroke(); g.setLineDash([]); g.fillText('first echo', ms2x(first) + 4, 22); }
+  if (isFinite(first)) { g.strokeStyle = 'rgba(233,230,223,0.35)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(ms2x(first), 8); g.lineTo(ms2x(first), h - padB); g.stroke(); g.setLineDash([]); const clash = ms2x(first) < ms2x(direct) + 10 + g.measureText('direct').width; g.fillText('first echo', ms2x(first) + 4, clash ? db2y(0) + 26 : 22); }
   if (clapMs != null && clapMs <= 600) { g.strokeStyle = COL.ink; g.lineWidth = 1.5; g.beginPath(); g.moveTo(ms2x(clapMs), 8); g.lineTo(ms2x(clapMs), h - padB); g.stroke(); g.lineWidth = 1; }
 }
 let clapMs = null;
