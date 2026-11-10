@@ -454,7 +454,7 @@ function applyRoomToggle() {
 const now = () => playing ? ctx.currentTime - startAt + offset : offset;
 function play() {
   if (!buf) return;
-  ctx.resume();
+  unlockAudio();
   srcNode = ctx.createBufferSource(); srcNode.buffer = buf; srcNode.connect(musicGate);
   startAt = ctx.currentTime; srcNode.start(0, offset); playing = true;
   srcNode.onended = () => { if (playing && now() >= buf.duration - 0.05) { playing = false; offset = 0; $('play').textContent = 'Play'; } };
@@ -853,7 +853,7 @@ document.querySelectorAll('input[name=preset]').forEach(r => r.addEventListener(
 $('roomOn').addEventListener('change', applyRoomToggle);
 $('play').addEventListener('click', () => { if (!ctx) return; playing ? pause() : play(); });
 $('clap').addEventListener('click', () => {
-  if (!ctx) setupAudio(); ctx.resume(); clapSound();
+  if (!ctx) setupAudio(); unlockAudio(); clapSound();
   const rate = +document.querySelector('input[name=speed]:checked').value;
   emit('clap', 1, rate); clapEvent = events[events.length - 1];
 });
@@ -1168,6 +1168,7 @@ $('loadBtn').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   if (!ctx) setupAudio();
+  unlockAudio();
   const btn = $('loadBtn'); btn.disabled = true; btn.textContent = 'Reading…';
   try {
     const raw = await f.arrayBuffer();
@@ -1187,10 +1188,27 @@ $('file').addEventListener('change', async e => {
   } finally { btn.disabled = false; btn.textContent = 'Load your track…'; e.target.value = ''; }
 });
 
+// Browsers only let a page start sound during a click or key press. Safari is strict: by the time a piece has been
+// fetched and decoded the click is over, so the audio engine is started right in the click, and again on any later
+// click or key press if the browser has suspended it (Safari also 'interrupts' it after sleep or a phone call).
+function unlockAudio() {
+  if (!ctx || ctx.state === 'running') return;
+  ctx.resume().catch(() => {});
+  try { const b = ctx.createBufferSource(); b.buffer = ctx.createBuffer(1, 1, ctx.sampleRate); b.connect(ctx.destination); b.start(0); } catch (e) {}
+}
+for (const ev of ['pointerdown', 'keydown', 'touchend']) document.addEventListener(ev, unlockAudio, true);
+let blockedNote = null;
+setInterval(() => {                              // say so, rather than play silently
+  if (!ctx) return;
+  const blocked = playing && ctx.state !== 'running';
+  if (blocked && blockedNote == null) { blockedNote = $('fmt').textContent; $('fmt').textContent = 'Sound is being blocked by the browser. Click anywhere on the page to start it'; }
+  else if (!blocked && blockedNote != null) { if ($('fmt').textContent.startsWith('Sound is being blocked')) $('fmt').textContent = blockedNote; blockedNote = null; }
+}, 500);
 // replace the simple play handler with one that loads the current piece first
 $('play').replaceWith($('play').cloneNode(true));
 $('play').addEventListener('click', async () => {
   if (!ctx) setupAudio();
+  unlockAudio();                                  // must happen inside the click itself, before any await (Safari)
   if (playing) { pause(); return; }
   try { buf = await ensureBuffer(piece); $('tdur').textContent = fmt(buf.duration); play(); }
   catch (err) { $('play').textContent = 'Audio unavailable'; console.error('Could not load the performance audio:', err); }
