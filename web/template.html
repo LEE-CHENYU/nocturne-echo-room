@@ -176,6 +176,15 @@ footer a { color: var(--ink-2); }
     </div>
     <div class="sep"></div>
     <div class="group">
+      <span class="lbl">Song waves</span>
+      <div class="seg" role="radiogroup" aria-label="Speed of the song's wavefronts" title="Real time: every note sends a wavefront at the true speed of sound, in sync with what you hear. Slower: one strong note at a time sends a full-detail wavefront in slow motion, so you can watch it cross the room and come back; the picture then runs behind the sound.">
+        <input type="radio" name="songspeed" id="ss1" value="1" checked><label for="ss1">Real time</label>
+        <input type="radio" name="songspeed" id="ss10" value="0.1"><label for="ss10">10× slower</label>
+        <input type="radio" name="songspeed" id="ss30" value="0.0333"><label for="ss30">30× slower</label>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
       <span class="lbl">Waves</span>
       <div class="seg" role="radiogroup" aria-label="How wavefronts are drawn" title="Points: dots riding the wavefront. Waves: the wavefront as a wire surface. Both travel through the whole room and bounce off walls, floor and ceiling. Slice: rings where the wavefront crosses the piano's height.">
         <input type="radio" name="waves" id="wShell" value="shell" checked><label for="wShell">Points</label>
@@ -458,8 +467,8 @@ function clapSound() {
 }
 
 // ---------- wavefront events -----------------------------------------------
-const events = []; let onsetIdx = 0, lastOnsetT = 0, clapEvent = null;
-function emit(kind, amp, rate, pitch) { events.push({ kind, amp, rate, born: performance.now(), pitch: pitch || 60 }); if (events.length > 24) events.shift(); }
+const events = []; let onsetIdx = 0, lastOnsetT = 0, clapEvent = null, songEvent = null;
+function emit(kind, amp, rate, pitch) { events.push({ kind, amp, rate, born: performance.now(), pitch: pitch || 60, big: kind !== 'note' }); if (events.length > 24) events.shift(); }
 function emitAt(kind, amp, pos, rgb) { events.push({ kind, amp, rate: 1, born: performance.now(), pitch: 60, imgs: images2D(2, pos), rgb, at: pos }); if (events.length > 40) events.shift(); }
 
 // ---------- canvases ---------------------------------------------------------
@@ -520,13 +529,13 @@ function hull(pts) {                          // convex hull, for clipping the w
   return lo.slice(0, -1).concat(up.slice(0, -1));
 }
 // Points spread evenly over a sphere (Fibonacci spiral): the directions a wavefront's sample points travel in
-const lifeOf = ev => ev.kind === 'clap' ? 1.0 : ev.kind === 'note' ? 0.85 : 0.3;   // seconds of sound travel a wavefront stays drawn
+const lifeOf = ev => ev.big ? 1.0 : 0.85;   // seconds of sound travel a wavefront stays drawn
 function fibSphere(n) { const o = new Float32Array(3 * n), ga = Math.PI * (3 - Math.sqrt(5)); for (let i = 0; i < n; i++) { const z = 1 - 2 * (i + 0.5) / n, r = Math.sqrt(1 - z * z); o[3 * i] = r * Math.cos(ga * i); o[3 * i + 1] = r * Math.sin(ga * i); o[3 * i + 2] = z; } return o; }
 const DIR_NOTE = fibSphere(420), DIR_CLAP = fibSphere(5000);
 // The wavefront as a shell of points: each one flies straight at the speed of sound and is folded back into the
 // room at every wall, floor or ceiling it meets (a mirror reflection), losing a little energy per bounce.
 function drawShell(g, ev, src, beta, nowp) {
-  const age = (nowp - ev.born) / 1000 * ev.rate, clap = ev.kind === 'clap', life = lifeOf(ev); if (age > life) return;
+  const age = (nowp - ev.born) / 1000 * ev.rate, clap = ev.big, life = lifeOf(ev); if (age > life) return;
   const r = age * C, fade = Math.pow(1 - age / life, 0.6), D = clap ? DIR_CLAP : DIR_NOTE, n = D.length / 3, dim = [S.L, S.W, S.H], V = VIEW;
   const size = (clap ? 1 : (ev.pitch < 48 ? 1.35 : 1)) * (1 + 0.5 * age / life), a0 = ev.amp * fade * (clap ? 1 : 0.9);
   const TINT = ['246,214,150', '127,227,216', '168,160,255'];   // outgoing gold, first bounce teal, later bounces violet
@@ -558,7 +567,7 @@ function wireSphere(nLat, mLat, nMer, mMer) {
 }
 const WIRE_NOTE = wireSphere(8, 48, 5, 64), WIRE_CLAP = wireSphere(18, 96, 12, 128);
 function drawMesh(g, ev, src, beta, nowp) {
-  const age = (nowp - ev.born) / 1000 * ev.rate, clap = ev.kind === 'clap', life = lifeOf(ev); if (age > life) return;
+  const age = (nowp - ev.born) / 1000 * ev.rate, clap = ev.big, life = lifeOf(ev); if (age > life) return;
   const r = age * C, fade = Math.pow(1 - age / life, 0.6), dim = [S.L, S.W, S.H], V = VIEW, a0 = ev.amp * fade * (clap ? 0.9 : 0.75);
   const TINT = ['246,214,150', '127,227,216', '168,160,255'], paths = [new Path2D(), new Path2D(), new Path2D()];
   for (const D of clap ? WIRE_CLAP : WIRE_NOTE) {
@@ -618,13 +627,13 @@ function drawPlan(tms) {
     for (const ev of events) {
       const age = (nowp - ev.born) / 1000 * ev.rate, r = age * C, life = lifeOf(ev);
       if (age > life) { ev.dead = true; continue; }
-      const fade = 1 - age / life, imgs = ev.kind === 'clap' ? IMG3_CLAP : IMG3;
+      const fade = 1 - age / life, imgs = ev.big ? IMG3_CLAP : IMG3;
       for (const im of imgs) {
         const amp = ev.amp * Math.pow(beta, im.o) * fade; if (amp < 0.02) continue;
         const dz = im.z - z0; if (Math.abs(dz) >= r) continue;
         const rh = Math.sqrt(r * r - dz * dz);
         g.strokeStyle = `rgba(226,180,92,${Math.min(0.95, amp * (im.o ? 0.7 : 1))})`;
-        g.lineWidth = ev.kind === 'clap' ? (im.o ? 1.3 : 2.2) : (im.o ? 1 : 1.7) * (ev.pitch < 48 ? 1.4 : 1);
+        g.lineWidth = ev.big ? (im.o ? 1.3 : 2.2) : (im.o ? 1 : 1.7) * (ev.pitch < 48 ? 1.4 : 1);
         if (slice) { poly(g, circle3(im.x, im.y, z0, rh, rh > 20 ? 64 : 40)); g.stroke(); }
         const dq = Math.hypot(im.x - q[0], im.y - q[1], im.z - S.ez);
         hitSeat += amp * Math.exp(-Math.abs(dq - r) / 1.5);
@@ -635,7 +644,7 @@ function drawPlan(tms) {
     if (slice && shell.length > 2) {
       g.save(); poly(g, shell, true); g.clip();
       for (const ev of events) {
-        if (ev.dead || ev.kind !== 'note' && ev.kind !== 'clap') continue;
+        if (ev.dead) continue;
         const age = (nowp - ev.born) / 1000 * ev.rate, r = age * C, c = proj(p[0], p[1], z0); if (!c) continue;
         const fade = 1 - age / lifeOf(ev);
         g.strokeStyle = `rgba(226,180,92,${0.18 * ev.amp * fade})`; g.lineWidth = 1; g.beginPath(); g.arc(c[0], c[1], V.F * r / c[2], 0, 7); g.stroke();
@@ -679,6 +688,9 @@ function drawPlan(tms) {
     if (clapEvent && !clapEvent.dead) {
       const ms = (nowp - clapEvent.born) * clapEvent.rate; g.fillStyle = COL.ink;
       g.fillText(`clap + ${ms.toFixed(0).padStart(3, ' ')} ms` + (clapEvent.rate < 1 ? `  (${Math.round(1 / clapEvent.rate)}× slower)` : ''), hp[0], line);
+    } else if (songEvent && !songEvent.dead && events.includes(songEvent)) {
+      const ms = (nowp - songEvent.born) * songEvent.rate; g.fillStyle = COL.brass;
+      g.fillText(`note + ${ms.toFixed(0).padStart(3, ' ')} ms  (${Math.round(1 / songEvent.rate)}× slower)`, hp[0], line);
     }
     g.textAlign = 'left';
   }
@@ -860,6 +872,7 @@ plan.addEventListener('pointermove', e => {
 const endDrag = () => { drag = null; plan.classList.remove('dragging'); };
 plan.addEventListener('pointerup', endDrag); plan.addEventListener('pointercancel', endDrag);
 plan.addEventListener('wheel', e => { e.preventDefault(); CAM.zoom = Math.max(0.25, Math.min(3, CAM.zoom * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+document.querySelectorAll('input[name=songspeed]').forEach(r => r.addEventListener('change', () => { for (const e of events) if (e.kind !== 'clap') e.dead = true; songEvent = null; }));
 document.querySelectorAll('input[name=view]').forEach(r => r.addEventListener('change', e => { CAM.top = e.target.value === 'top'; }));
 $('vReset').addEventListener('click', () => { Object.assign(CAM, { yaw: 0.55, pitch: 0.42, zoom: 1, top: false }); $('v3d').checked = true; });
 
@@ -1010,7 +1023,13 @@ function frame(ts) {
     const t = now();
     while (onsetIdx < ONSETS.length && ONSETS[onsetIdx][0] <= t) {
       const [ot, v, pitch] = ONSETS[onsetIdx++];
-      if (t - ot < 0.25) { emit('note', 0.25 + 0.75 * (v / 127), 1, pitch); events[events.length - 1].born -= (t - ot) * 1000; }
+      if (t - ot >= 0.25) continue;
+      const rate = +document.querySelector('input[name=songspeed]:checked').value;
+      if (rate === 1) { emit('note', 0.25 + 0.75 * (v / 127), 1, pitch); events[events.length - 1].born -= (t - ot) * 1000; }
+      else {                                        // slow motion: wait until the last wave has travelled 120 m, then take the next note
+        const nowp = performance.now(), young = events.some(e => e.kind === 'beat' && (nowp - e.born) / 1000 * e.rate < 0.35);
+        if (!young && v >= 20) { emit('beat', 0.75 + 0.25 * (v / 127), rate, pitch); songEvent = events[events.length - 1]; }
+      }
     }
     drawProgress();
   }
