@@ -214,6 +214,7 @@ const PIECES = {
 };
 // beats = bass notes spaced apart: in the waltz, beat 1 of each bar; in the tango (2/4), roughly each beat
 for (const p of Object.values(PIECES)) {
+  p.onsets = p.onsets || [];                      // a piece with analyse: true gets its onsets and beats when it is decoded
   const bp = p.beatPitch || 52, bg = p.beatGap || 0.4;
   p.beats = []; for (const [t, , pitch] of p.onsets) if (pitch < bp && (!p.beats.length || t - p.beats[p.beats.length - 1] >= bg)) p.beats.push(t);
 }
@@ -357,17 +358,11 @@ function buildIR(sr) {
 let ctx, buf, srcNode = null, playing = false, offset = 0, startAt = 0;
 let input, dryG, wetBus, convs = [], convG = [], active = 0, anDry, anWet, master;
 let tailConvs = [], tailG = [], tailActive = 0, tailDelay, tailNorm, tailKeyLive = null;
-let musicGate, fxBus, fxTail, fxTailKey = null, muffle;
+let musicGate;
 function setupAudio() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   input = ctx.createGain(); dryG = ctx.createGain(); wetBus = ctx.createGain(); master = ctx.createGain();
   musicGate = ctx.createGain(); musicGate.connect(input);          // the hologram's flicker cuts the music here
-  fxBus = ctx.createGain(); fxBus.gain.value = 0.35;                // fight sounds, already placed in the room
-  const fxLim = ctx.createDynamicsCompressor();                      // a blow at arm's length is ~20 dB over the music: catch the peaks
-  fxLim.threshold.value = -10; fxLim.knee.value = 4; fxLim.ratio.value = 12; fxLim.attack.value = 0.002; fxLim.release.value = 0.2;
-  fxBus.connect(fxLim); fxLim.connect(master);
-  fxTail = ctx.createConvolver(); fxTail.normalize = false; fxTail.connect(fxBus);
-  muffle = ctx.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 20000; muffle.Q.value = 0.5;
   master.gain.value = 0.9;
   anDry = ctx.createAnalyser(); anWet = ctx.createAnalyser(); anDry.fftSize = anWet.fftSize = 2048;
   input.connect(anDry); input.connect(dryG); dryG.connect(master);
@@ -378,7 +373,7 @@ function setupAudio() {
   input.connect(tailDelay);
   for (let i = 0; i < 2; i++) { const c = ctx.createConvolver(); c.normalize = false; const g = ctx.createGain(); g.gain.value = 0; c.connect(g); g.connect(tailNorm); tailConvs.push(c); tailG.push(g); }
   tailNorm.connect(wetBus);
-  wetBus.connect(master); master.connect(muffle); muffle.connect(anWet); anWet.connect(ctx.destination);
+  wetBus.connect(master); master.connect(anWet); anWet.connect(ctx.destination);
   applyRoomToggle(); rebuildAudioIR();
 }
 const toBuffer = ch => { const b = ctx.createBuffer(2, ch[0].length, ctx.sampleRate); b.copyToChannel(ch[0], 0); b.copyToChannel(ch[1], 1); return b; };
@@ -731,74 +726,10 @@ function stepTango(ts) {
   if (ts - lastIRTs > 40) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
 }
 // ---------- showroom fight -----------------------------------------------------
-// Sounds are synthesised here (no samples). Each blow is rendered where it happens: the same image-source
-// model as the music, but from the blow's position to your two ears, then the room's diffuse tail, so a
-// crash across the floor sounds far and smeared and a jab in your face is loud and dry.
-const FXDRY = {};
-function fxDry(kind, sr) {
-  const key = kind + sr; if (FXDRY[key] && Math.random() < 0.7) return FXDRY[key];
-  const dur = { punch: 0.16, block: 0.1, shot: 0.4, crash: 0.7 }[kind], n = Math.ceil(dur * sr), x = new Float32Array(n);
-  const glass = [[1730, .22], [2310, .17], [3170, .12], [4420, .09], [5830, .07]].map(([f, d]) => [f * (0.9 + 0.2 * Math.random()), d, Math.random() * 6]);
-  let ph = 0, lp = 0, pk = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / sr, r = Math.random() * 2 - 1;
-    if (kind === 'punch' || kind === 'block') {          // body thump: a falling low tone plus a slap of noise
-      const f = kind === 'punch' ? 50 + 70 * Math.exp(-t / 0.02) : 120 + 90 * Math.exp(-t / 0.01);
-      ph += 2 * Math.PI * f / sr; lp += 0.25 * (r - lp);
-      x[i] = Math.sin(ph) * Math.exp(-t / (kind === 'punch' ? 0.05 : 0.025)) + 0.7 * lp * Math.exp(-t / 0.008) + 0.3 * r * Math.exp(-t / 0.0015);
-    } else if (kind === 'shot') {                         // muzzle crack, then the low boom of the gases
-      ph += 2 * Math.PI * 85 / sr; lp += 0.3 * (r - lp);
-      x[i] = (r * Math.exp(-t / 0.004) + 0.8 * lp * Math.exp(-t / 0.05) + 0.6 * Math.sin(ph) * Math.exp(-t / 0.07)) * Math.min(1, t / 0.0003);
-    } else {                                              // crash: a table going over, glass breaking
-      ph += 2 * Math.PI * 65 / sr; lp += 0.15 * (r - lp);
-      let gl = 0; for (const [f, d, p0] of glass) gl += Math.sin(2 * Math.PI * f * t + p0) * Math.exp(-(t - 0.03) / d) * (t > 0.03);
-      x[i] = 0.9 * Math.sin(ph) * Math.exp(-t / 0.09) + 0.6 * lp * Math.exp(-t / 0.04) + 0.16 * gl * (0.4 + 0.6 * Math.random());
-    }
-    pk = Math.max(pk, Math.abs(x[i]));
-  }
-  for (let i = 0; i < n; i++) x[i] /= pk;
-  return (FXDRY[key] = x);
-}
-function fxAt(kind, pos, level) {
-  if (!ctx || ctx.state !== 'running' || !IRSTATS) return;
-  const sr = ctx.sampleRate, dry = fxDry(kind, sr), roomOn = $('roomOn').checked;
-  const lv = leftVec(S.face), head = [S.seat[0], S.seat[1], S.ez];
-  const ears = [[head[0] + lv[0] * S.ear, head[1] + lv[1] * S.ear, S.ez], [head[0] - lv[0] * S.ear, head[1] - lv[1] * S.ear, S.ez]];
-  const dist = Math.max(0.5, Math.hypot(pos[0] - head[0], pos[1] - head[1], pos[2] - head[2]));
-  const imgs = roomOn ? images3D(pos, dist + 0.12 * C, head, ears) : [{ x: pos[0], y: pos[1], z: pos[2], o: 0, d: ears.map(e => Math.hypot(pos[0] - e[0], pos[1] - e[1], pos[2] - e[2])) }];
-  const beta = TAIL.ac.beta, norm = (roomOn ? IRSTATS.norm : 1) * level;
-  let dmaxS = 0; for (const im of imgs) dmaxS = Math.max(dmaxS, im.d[0], im.d[1]);
-  const len = Math.ceil(dmaxS / C * sr) + dry.length + 1, ch = [new Float32Array(len), new Float32Array(len)];
-  for (const im of imgs) {
-    const dx = im.x - head[0], dy = im.y - head[1], r = Math.hypot(dx, dy, im.z - head[2]) || 1;
-    const side = (dx * lv[0] + dy * lv[1]) / r, amp = Math.pow(beta, im.o) * Math.exp(-0.0006 * r) * norm;
-    for (let e = 0; e < 2; e++) {
-      const a = (e ? 0.6 - 0.4 * side : 0.6 + 0.4 * side) * amp / Math.max(im.d[e], 0.5), n0 = Math.round(im.d[e] / C * sr), c = ch[e];
-      for (let j = 0; j < dry.length; j++) c[n0 + j] += a * dry[j];
-    }
-  }
-  const t = ctx.currentTime + 0.01, b = ctx.createBufferSource(); b.buffer = toBuffer(ch); b.connect(fxBus); b.start(t);
-  if (roomOn) {                                          // the diffuse tail, starting when the direct sound arrives
-    if (fxTailKey !== TAIL.key) { fxTail.buffer = toBuffer(TAIL.ch); fxTailKey = TAIL.key; }
-    const mono = ctx.createBuffer(1, dry.length, sr); mono.copyToChannel(dry, 0);
-    const d = ctx.createBufferSource(), g2 = ctx.createGain(); d.buffer = mono; g2.gain.value = norm;
-    d.connect(g2); g2.connect(fxTail); d.start(t + dist / C);
-  }
-}
-// a hard hit or a shot close by: hearing goes dull and a high ring fades out
-function stun(sev) {
-  if (!ctx || ctx.state !== 'running') return;
-  const t = ctx.currentTime;
-  hold(muffle.frequency, t); muffle.frequency.setValueAtTime(Math.max(300, 1400 * (1 - sev)), t + 0.01);
-  muffle.frequency.exponentialRampToValueAtTime(20000, t + 0.6 + 2.2 * sev);
-  const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 3900 + 400 * Math.random();
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.025 * sev, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 1 + 2.5 * sev);
-  o.connect(g); g.connect(muffle); o.start(t); o.stop(t + 1.1 + 2.5 * sev);
-}
 // the hologram: steady for a few seconds, then it drops out (sometimes in a stutter of blinks); the music goes with it
 const HOLO = { on: true, next: 0, blinks: 0 };
 function holoGate(on) { if (!musicGate) return; const t = ctx.currentTime; hold(musicGate.gain, t); musicGate.gain.setTargetAtTime(on ? 1 : 0, t, on ? 0.008 : 0.004); }
-function holoReset() { HOLO.on = true; HOLO.next = 0; HOLO.blinks = 0; holoGate(true); if (muffle) { hold(muffle.frequency, ctx.currentTime); muffle.frequency.setTargetAtTime(20000, ctx.currentTime, 0.05); } }
+function holoReset() { HOLO.on = true; HOLO.next = 0; HOLO.blinks = 0; holoGate(true); }
 function stepHolo(ts) {
   if (!playing) { if (!HOLO.on) { HOLO.on = true; holoGate(true); } HOLO.next = ts + 3000; return; }
   if (ts < HOLO.next) return;
@@ -825,9 +756,10 @@ function drawHologram(g, px, py, k, tms) {
   }
   g.restore();
 }
-// You and a rival circle a point that drifts across the floor. One action per beat, in a phrase of 16:
-// you jab, they swing (you block), ... beat 7 they land one, beat 11 you are thrown into a table,
-// beat 15 they fire a shot. Moves happen early in the beat, like the tango's.
+// You and a rival circle a point that drifts across the floor. One move per beat, in a phrase of 16:
+// you jab, they swing (you block), ... beat 7 they land one and your head turns, beat 11 you are thrown
+// 2.4 m, beat 15 a stand-off at arm's length. No sound effects: only your position and facing change,
+// so you hear the song swing between your ears and move nearer and farther.
 const FG = { k: -1, c: null, tgt: null, th: 0, sep: 1.3, name: '', mine: true, t0: 0, dur: 0.25, kind: null, push: [0, 0], from: null };
 function stepFight(ts) {
   if (!FG.c) { FG.c = [S.L * 0.55, S.W * 0.5]; FG.tgt = null; FG.th = 0; FG.push = [0, 0]; }
@@ -838,26 +770,19 @@ function stepFight(ts) {
   } else { t = ts / 1000; k = Math.floor(t / 0.7); tStart = k * 0.7; gap = 0.7; }
   const lo = [S.L * 0.3, S.W * 0.2], hi = [S.L * 0.9, S.W * 0.8];
   if (k !== FG.k) {
-    const m = ((k % 16) + 16) % 16, sound = playing && FG.k >= 0 && k === FG.k + 1;
+    const m = ((k % 16) + 16) % 16;
     FG.k = k; FG.t0 = tStart; FG.dur = Math.min(0.3, 0.5 * gap); FG.from = { c: [...FG.c], th: FG.th };
     if (!FG.tgt || Math.hypot(FG.tgt[0] - FG.c[0], FG.tgt[1] - FG.c[1]) < 1) FG.tgt = [lo[0] + Math.random() * (hi[0] - lo[0]), lo[1] + Math.random() * (hi[1] - lo[1])];
     const dir = Math.atan2(FG.tgt[1] - FG.c[1], FG.tgt[0] - FG.c[0]);
     FG.to = { c: [FG.c[0] + 0.45 * Math.cos(dir), FG.c[1] + 0.45 * Math.sin(dir)], th: FG.th + (Math.floor(k / 4) % 2 ? 0.3 : -0.3) };
-    const you = fightPos(FG.c, FG.th, 1).you, opp = fightPos(FG.c, FG.th, 1).opp;
-    const between = [(you[0] + opp[0]) / 2, (you[1] + opp[1]) / 2, 1.5];
-    let kind, at, lvl, sev = 0, name, mine;
-    if (m === 15) { kind = 'shot'; at = [opp[0], opp[1], 1.4]; lvl = 2.2; sev = 0.7; name = 'shot'; mine = false; }
-    else if (m === 11) { kind = 'crash'; FG.to.c = [FG.c[0] + 2.4 * Math.cos(FG.th), FG.c[1] + 2.4 * Math.sin(FG.th)]; at = [FG.to.c[0] + 1.6 * Math.cos(FG.th), FG.to.c[1] + 1.6 * Math.sin(FG.th), 0.8]; lvl = 1.6; sev = 0.35; name = 'thrown: table and glass'; mine = false; }
-    else if (m === 7) { kind = 'punch'; at = [you[0], you[1], 1.65]; lvl = 1.3; sev = 0.5; name = 'hit taken'; mine = false; }
-    else if (m % 2 === 0) { kind = 'punch'; at = [opp[0], opp[1], 1.55]; lvl = 0.9; name = m === 14 ? 'cross' : 'jab'; mine = true; }
-    else { kind = 'block'; at = between; lvl = 0.6; name = 'block'; mine = false; }
+    let name, mine;
+    if (m === 15) { name = 'stand-off'; mine = false; }
+    else if (m === 11) { FG.to.c = [FG.c[0] + 2.4 * Math.cos(FG.th), FG.c[1] + 2.4 * Math.sin(FG.th)]; name = 'thrown'; mine = false; }
+    else if (m === 7) { name = 'hit taken'; mine = false; }
+    else if (m % 2 === 0) { name = m === 14 ? 'cross' : 'jab'; mine = true; }
+    else { name = 'block'; mine = false; }
     FG.to.c = [Math.max(lo[0], Math.min(hi[0], FG.to.c[0])), Math.max(lo[1], Math.min(hi[1], FG.to.c[1]))];
-    Object.assign(FG, { name, mine, kind: m });
-    if (sound) {
-      fxAt(kind, at, lvl);
-      emitAt(kind, kind === 'block' ? 0.5 : 0.9, at, kind === 'shot' ? '255,236,190' : mine ? '106,174,232' : '239,107,91');
-      if (sev) stun(sev);
-    }
+    Object.assign(FG, { name, mine });
   }
   const u = ease((t - FG.t0) / FG.dur), lunge = Math.sin(Math.PI * Math.min(1, (t - FG.t0) / FG.dur));
   FG.c = [FG.from.c[0] + (FG.to.c[0] - FG.from.c[0]) * u, FG.from.c[1] + (FG.to.c[1] - FG.from.c[1]) * u];
@@ -879,7 +804,7 @@ function drawRival(g) {
 }
 const HINTS = {
   off: 'Drag the gold piano or the blue seat. Rings are wall reflections in the plan; floor and ceiling bounces are in the sound and the echogram but not drawn here.',
-  fight: 'Showroom fight: an abandoned showroom, a hologram singer on the stage, and you (blue) trading blows with a rival (red) on the floor, on the beat. Every jab, block, crash and shot is a sound source where it happens, with its own echoes; a hard hit muffles your hearing and leaves a ringing. When the hologram flickers, the song cuts out. Load a slow ballad of your own and wear headphones.',
+  fight: 'Showroom fight: an abandoned showroom, a hologram singer on the stage, and you (blue) trading blows with a rival (red) on the floor, on the beat. No sound effects: the fight only moves you and turns your head, so the song swings between your ears and comes nearer and farther. When the hologram flickers, the song cuts out. Load a slow ballad of your own and wear headphones.',
   waltz: 'You are waltzing: half a turn per bar on the bass, travelling anticlockwise round the room. L and R mark your ears. Wear headphones and listen to the piano and its echoes swing from ear to ear as you turn.',
   tango: 'You are dancing tango: one move per beat, sharp and then still. Four walking steps, two ochos (pivots of 75°), a fast giro, then a corte where you freeze facing the piano. Wear headphones: the sound jumps where the waltz glides.',
 };
@@ -928,6 +853,15 @@ async function ensureBuffer(name) {
     btn.textContent = 'Decoding…';
     try { DECODED[name] = await ctx.decodeAudioData(ab.slice(0)); DECODED[name].format = 'FLAC, lossless'; }
     catch (e) { console.warn('FLAC decode failed, using MP3:', e); DECODED[name] = await ctx.decodeAudioData(await getBytes(PIECES[name].fallback)); DECODED[name].format = 'MP3 112 kbps'; }
+    if (PIECES[name].analyse) {                   // a recording, not a MIDI render: fold to mono and find its beat here
+      btn.textContent = 'Finding the beat…'; await new Promise(r => setTimeout(r, 30));
+      const dec = DECODED[name], mono = ctx.createBuffer(1, dec.length, dec.sampleRate), m = mono.getChannelData(0);
+      for (let c = 0; c < dec.numberOfChannels; c++) { const d = dec.getChannelData(c); for (let i = 0; i < d.length; i++) m[i] += d[i] / dec.numberOfChannels; }
+      const an = analyseTrack(m, mono.sampleRate);
+      Object.assign(PIECES[name], { onsets: an.onsets, beats: an.beats, bpm: an.bpm });
+      if (piece === name) ONSETS = an.onsets;
+      mono.format = (PIECES[name].fmt || dec.format) + ` · ${Math.round(an.bpm)} BPM found`; DECODED[name] = mono;
+    }
     $('fmt').textContent = DECODED[name].format;
     return DECODED[name];
   } finally { btn.disabled = false; btn.textContent = playing ? 'Pause' : 'Play'; }

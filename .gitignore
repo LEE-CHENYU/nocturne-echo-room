@@ -5,3 +5,6 @@ out/*.wav
 out/*.m4a
 __pycache__/
 .DS_Store
+
+# personal-use copies of copyrighted recordings and transcriptions: local only, never published or committed
+personal/
