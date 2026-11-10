@@ -493,7 +493,8 @@ function layout() {
 // (leftVec) is on the listener's left as you look at them. A simple orbit camera, perspective projection,
 // painter's order; no WebGL needed for a few hundred lines a frame.
 const CAM = { yaw: 0.55, pitch: 0.42, zoom: 1, top: false, tgt: null };
-let VIEW = null;
+let VIEW = null, LAY = null;
+function measureLayout() { LAY = { at: performance.now(), side: window.innerWidth > 900 ? document.querySelector('.side').getBoundingClientRect().width + 30 : 0, top: document.querySelector('.controls').getBoundingClientRect().bottom, dock: document.querySelector('.dock').getBoundingClientRect().top }; }
 function setupView() {
   const fight = dance() === 'fight', diag = Math.hypot(S.L, S.W, S.H);
   const want = fight && FG.c ? [FG.c[0], FG.c[1], 1.2] : [S.L / 2, S.W / 2, CAM.top ? 0 : S.H * 0.22];
@@ -504,10 +505,10 @@ function setupView() {
   const f = [t[0] - eye[0], t[1] - eye[1], t[2] - eye[2]], fl = Math.hypot(...f); f[0] /= fl; f[1] /= fl; f[2] /= fl;
   const r = [-Math.sin(yaw), Math.cos(yaw), 0];
   const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
-  const side = window.innerWidth > 900 ? (document.querySelector('.side').getBoundingClientRect().width + 30) : 0;
+  if (!LAY || performance.now() - LAY.at > 300) measureLayout();
+  const side = LAY.side;
   // the free area: below the controls, left of the side panels, above the dock (when they are on screen)
-  const top = Math.max(0, Math.min(P.h * 0.6, document.querySelector('.controls').getBoundingClientRect().bottom));
-  const dk = document.querySelector('.dock').getBoundingClientRect(), bot = side && dk.top < P.h ? Math.max(top + 200, dk.top) : P.h;
+  const top = Math.max(0, Math.min(P.h * 0.6, LAY.top)), bot = side && LAY.dock < P.h ? Math.max(top + 200, LAY.dock) : P.h;
   const cx = (P.w - side) / 2, cy = (top + bot) / 2, F = Math.min(P.w - side, (bot - top) * 1.5) * 1.0;
   VIEW = { eye, f, r, u, cx, cy, F };
 }
@@ -880,6 +881,18 @@ document.querySelectorAll('input[name=view]').forEach(r => r.addEventListener('c
 $('vReset').addEventListener('click', () => { Object.assign(CAM, { yaw: 0.55, pitch: 0.42, zoom: 1, top: false }); $('v3d').checked = true; });
 
 const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+// The audio clock moves in steps of one audio buffer (5 ms on built-in speakers, more on Bluetooth), so two video
+// frames can see uneven amounts of music time and anything driven by it judders. Motion uses VT instead: it
+// advances with the display's own frame time and is only steered gently toward the audio clock.
+let VT = 0, vtBase = 0, vtTs = 0, vtOn = false;
+function updateVT(ts) {
+  if (!playing) { vtOn = false; VT = offset; return; }
+  const a = now();
+  if (!vtOn) { vtBase = a; vtTs = ts; vtOn = true; VT = a; return; }
+  const est = vtBase + (ts - vtTs) / 1000, err = a - est;
+  if (Math.abs(err) > 0.08) { vtBase = a; vtTs = ts; VT = a; return; }   // seek, stall, tab switch: jump
+  vtBase += err * 0.02; VT = est + err * 0.02;
+}
 function drawProgress() { if (!buf) return; const t = now(); $('tcur').textContent = fmt(t); $('tbar').style.width = (100 * t / buf.duration) + '%'; }
 
 // ---------- waltz ------------------------------------------------------------
@@ -889,7 +902,7 @@ const dance = () => document.querySelector('input[name=dance]:checked').value;
 const srcName = () => dance() === 'fight' ? 'hologram' : (PIECES[piece].src || (PIECES[piece].file && !PIECES[piece].analyse ? 'piano' : 'speaker'));
 function setSrcLabels() { document.querySelectorAll('.srcname').forEach(e => e.textContent = srcName()); }
 const waltzOn = () => dance() !== 'off';          // 'dancing' (waltz or tango)
-let wTurn = 0, lastBeatPos = null, lastWaltzTs = null, lastIRTs = 0; const trail = [];
+let wTurn = 0, wRate = 0.5, lastBeatPos = null, lastWaltzTs = null, lastIRTs = 0; const trail = [];
 function beatPos(t) {
   const b = PIECES[piece].beats; if (!b.length || t < b[0]) return null;
   let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
@@ -898,9 +911,12 @@ function beatPos(t) {
 }
 function stepWaltz(ts) {
   const dt = lastWaltzTs == null ? 0 : Math.min(0.1, (ts - lastWaltzTs) / 1000); lastWaltzTs = ts;
-  const bp = playing ? beatPos(now()) : null;
-  if (bp != null && lastBeatPos != null && bp >= lastBeatPos && bp - lastBeatPos < 3) wTurn += (bp - lastBeatPos) / 2 / (PIECES[piece].waltzEvery || 1);
-  else if (!playing) wTurn += dt * 0.5;
+  const bp = playing ? beatPos(VT) : null;
+  // turn rate from the beat phase, low-passed over ~0.3 s so the speed does not step at every (uneven) beat
+  let want = wRate;
+  if (bp != null && lastBeatPos != null && bp >= lastBeatPos && bp - lastBeatPos < 3 && dt > 0) want = (bp - lastBeatPos) / 2 / (PIECES[piece].waltzEvery || 1) / dt;
+  else if (!playing) want = 0.5;
+  wRate += (want - wRate) * (1 - Math.exp(-dt / 0.3)); wTurn += wRate * dt;
   lastBeatPos = bp;
   const rx = S.L / 2 - Math.max(3, 0.14 * S.L), ry = S.W / 2 - Math.max(2.5, 0.18 * S.W), ph = -2 * Math.PI * wTurn / 24;
   S.seat[0] = S.L / 2 + rx * Math.cos(ph); S.seat[1] = S.W / 2 + ry * Math.sin(ph);
@@ -922,8 +938,8 @@ const ease = u => 1 - Math.pow(1 - Math.max(0, Math.min(1, u)), 3);
 function stepTango(ts) {
   let k, tStart, gap, t;
   const b = PIECES[piece].beats;
-  if (playing && b.length && now() >= b[0]) {
-    t = now(); let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
+  if (playing && b.length && VT >= b[0]) {
+    t = VT; let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
     k = lo; tStart = b[lo]; gap = lo + 1 < b.length ? b[lo + 1] - b[lo] : 0.8;
   } else { t = ts / 1000; k = Math.floor(t / 0.8); tStart = k * 0.8; gap = 0.8; }
   if (k !== TG.k) {                                   // a new beat: plan the next move from where we are
@@ -973,8 +989,8 @@ const FG = { k: -1, c: null, tgt: null, th: 0, sep: 1.3, name: '', mine: true, t
 function stepFight(ts) {
   if (!FG.c) { FG.c = [S.L * 0.55, S.W * 0.5]; FG.tgt = null; FG.th = 0; FG.push = [0, 0]; }
   let k, tStart, gap, t; const b = PIECES[piece].beats;
-  if (playing && b.length && now() >= b[0]) {
-    t = now(); let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
+  if (playing && b.length && VT >= b[0]) {
+    t = VT; let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
     k = lo; tStart = b[lo]; gap = lo + 1 < b.length ? b[lo + 1] - b[lo] : 0.7;
   } else { t = ts / 1000; k = Math.floor(t / 0.7); tStart = k * 0.7; gap = 0.7; }
   const lo = [S.L * 0.3, S.W * 0.2], hi = [S.L * 0.9, S.W * 0.8];
@@ -1021,9 +1037,10 @@ document.querySelectorAll('input[name=dance]').forEach(r => r.addEventListener('
 }));
 
 function frame(ts) {
+  updateVT(ts);
   if (dance() === 'waltz') stepWaltz(ts); else if (dance() === 'tango') stepTango(ts); else if (dance() === 'fight') { stepFight(ts); stepHolo(ts); }
   if (playing) {
-    const t = now();
+    const t = VT;
     while (onsetIdx < ONSETS.length && ONSETS[onsetIdx][0] <= t) {
       const [ot, v, pitch] = ONSETS[onsetIdx++];
       if (t - ot >= 0.25) continue;
