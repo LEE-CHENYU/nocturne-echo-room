@@ -19,6 +19,8 @@
   --rival: #ef6b5b;       /* the showroom fight: your rival and the blows */
   --holo: #7fe3d8;        /* the hologram singer */
   --wall: #c9ced8;
+  --glass: rgba(19, 24, 33, 0.55);   /* panels float over the 3D room */
+  --glass-line: rgba(255, 255, 255, 0.07);
   --f-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
   --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -36,7 +38,7 @@ h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(28px, 4vw
 h1 em { color: var(--brass); }
 .sub { color: var(--ink-2); max-width: 70ch; line-height: 1.5; margin: 0; }
 
-.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(7px) saturate(1.1); -webkit-backdrop-filter: blur(7px) saturate(1.1); border-radius: 10px; padding: 12px 14px; }
 .group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sep { width: 1px; align-self: stretch; background: var(--line); }
 button, .seg label {
@@ -76,14 +78,28 @@ input[type=range] { width: 100%; accent-color: var(--brass); }
 .check { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); font-size: 13px; cursor: pointer; }
 .check input { accent-color: var(--seat); }
 
-.stage { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 14px; }
 @media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.card { background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(7px) saturate(1.1); -webkit-backdrop-filter: blur(7px) saturate(1.1); border-radius: 10px; padding: 12px 14px; min-width: 0; display: grid; gap: 8px; align-content: start; }
 .card h2 { margin: 0; font: 600 12px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 .hint { margin: 0; color: var(--ink-3); font-size: 12.5px; line-height: 1.45; }
 canvas { display: block; width: 100%; touch-action: none; }
-#plan { cursor: grab; }
-#plan.dragging { cursor: grabbing; }
+.side canvas { touch-action: auto; }
+canvas.scene { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; cursor: grab; }
+.wrap { position: relative; z-index: 1; pointer-events: none; }
+.wrap header, .wrap .controls, .wrap .card, .wrap footer { pointer-events: auto; }
+.stage { min-height: calc(100vh - 230px); }
+.dock { align-self: end; max-width: 620px; }
+.dockhead { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.dockhead h2 { margin-right: auto; }
+.dockhead button, .dockhead .seg label { padding: 6px 10px; font-size: 12px; }
+footer { background: var(--glass); border-radius: 8px; padding: 6px 10px; max-width: 900px; }
+@media (max-width: 900px) {            /* phones: leave a window onto the room between the controls and the panels */
+  .stage { min-height: 0; } .dock { margin-top: 52vh; max-width: none; }
+  .seg { flex-wrap: wrap; row-gap: 4px; } .seg label { border-radius: 7px !important; margin-left: 0; }
+  body { overflow-x: hidden; }
+}
+canvas.scene.dragging { cursor: grabbing; }
 .side { display: grid; gap: 14px; align-content: start; min-width: 0; }
 
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
@@ -102,10 +118,10 @@ footer a { color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
 
+<canvas id="plan" class="scene" aria-label="The room in 3D: drag empty space to orbit, scroll to zoom, drag the piano or your head to move them"></canvas>
 <div class="wrap">
   <header>
     <h1>Nocturne <em>Echo</em> Room</h1>
-    <p class="sub">Chopin, Nocturne in E♭ major, Op. 9 No. 2, played in a room you shape. Drag the piano or your seat, resize the hall, change its walls, and hear the echo change live. Every ring is a wavefront; the rings that start outside the room are its echoes.</p>
   </header>
 
   <div class="controls" role="group" aria-label="Playback and room controls">
@@ -166,12 +182,15 @@ footer a { color: var(--ink-2); }
   </div>
 
   <div class="stage">
-    <div class="card">
-      <h2>Floor plan, seen from above</h2>
-      <canvas id="plan" aria-label="Floor plan of the room with draggable piano and listener"></canvas>
+    <div class="card dock">
+      <div class="dockhead"><h2>The room</h2>
+        <div class="seg" role="radiogroup" aria-label="View">
+          <input type="radio" name="view" id="v3d" value="3d" checked><label for="v3d">3D</label>
+          <input type="radio" name="view" id="vTop" value="top"><label for="vTop">Top view</label>
+        </div><button id="vReset" title="Back to the starting angle and zoom">Reset view</button></div>
       <div class="progress"><span id="tcur">0:00</span><div class="bar" id="seek" title="Seek"><i id="tbar"></i></div><span id="tdur">3:45</span></div>
       <p class="hint">Audio: <span id="fmt">FLAC, lossless</span> · 16-bit / 44.1 kHz, dry, mono (the room adds the stereo).</p>
-      <p class="hint" id="planHint">Drag the gold piano or the blue seat. Rings are wall reflections in the plan; floor and ceiling bounces are in the sound and the echogram but not drawn here.</p>
+      <p class="hint" id="planHint">Drag empty space to turn the room, scroll to zoom, drag the piano or your head to move them across the floor. Rings are where each echo’s sphere crosses the piano’s height; dashed lines are the first bounce off each wall, the floor and the ceiling.</p>
     </div>
 
     <div class="side">
@@ -441,116 +460,213 @@ function fit(cv, aspect) {
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w, h };
 }
 let P, E, T;
-function layout() { P = fit(plan, 0.56); E = fit(echo, 0.45); T = fit(trace, 0.36); setScale(); }
-// fixed scale (so resizing the room is visible), except in the fight, which zooms to the room to see the action
-function setScale() { if (!P) return; const [L, W] = dance() === 'fight' ? [S.L, S.W] : [MAXL, MAXW]; P.scale = Math.min((P.w - 40) / L, (P.h - 46) / W); }
-const toPx = (x, y) => [20 + x * P.scale, 14 + y * P.scale];
-const toM = (px, py) => [(px - 20) / P.scale, (py - 14) / P.scale];
+function layout() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = window.innerWidth, h = window.innerHeight;
+  plan.width = Math.round(w * dpr); plan.height = Math.round(h * dpr);
+  const g = plan.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); P = { g, w, h };
+  E = fit(echo, 0.45); T = fit(trace, 0.36);
+}
+// ---------- 3D view --------------------------------------------------------------
+// World: x along the length, y across, z up (metres). Rendered with y mirrored so that the model's "left ear"
+// (leftVec) is on the listener's left as you look at them. A simple orbit camera, perspective projection,
+// painter's order; no WebGL needed for a few hundred lines a frame.
+const CAM = { yaw: 0.55, pitch: 0.42, zoom: 1, top: false, tgt: null };
+let VIEW = null;
+function setupView() {
+  const fight = dance() === 'fight', diag = Math.hypot(S.L, S.W, S.H);
+  const want = fight && FG.c ? [FG.c[0], FG.c[1], 1.2] : [S.L / 2, S.W / 2, CAM.top ? 0 : S.H * 0.22];
+  CAM.tgt = CAM.tgt ? CAM.tgt.map((v, i) => v + (want[i] - v) * 0.08) : want;
+  const d = (fight ? 0.7 : CAM.top ? 1.15 : 1.3) * diag * CAM.zoom, pitch = CAM.top ? Math.PI / 2 - 1e-4 : CAM.pitch, yaw = CAM.top ? -Math.PI / 2 : CAM.yaw;
+  const t = [CAM.tgt[0], -CAM.tgt[1], CAM.tgt[2]];
+  const eye = [t[0] + d * Math.cos(pitch) * Math.cos(yaw), t[1] + d * Math.cos(pitch) * Math.sin(yaw), t[2] + d * Math.sin(pitch)];
+  const f = [t[0] - eye[0], t[1] - eye[1], t[2] - eye[2]], fl = Math.hypot(...f); f[0] /= fl; f[1] /= fl; f[2] /= fl;
+  const r = [-Math.sin(yaw), Math.cos(yaw), 0];
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  const side = window.innerWidth > 900 ? (document.querySelector('.side').getBoundingClientRect().width + 30) : 0;
+  // the free area: below the controls, left of the side panels, above the dock (when they are on screen)
+  const top = Math.max(0, Math.min(P.h * 0.6, document.querySelector('.controls').getBoundingClientRect().bottom));
+  const dk = document.querySelector('.dock').getBoundingClientRect(), bot = side && dk.top < P.h ? Math.max(top + 200, dk.top) : P.h;
+  const cx = (P.w - side) / 2, cy = (top + bot) / 2, F = Math.min(P.w - side, (bot - top) * 1.5) * 1.0;
+  VIEW = { eye, f, r, u, cx, cy, F };
+}
+function proj(x, y, z) {
+  const V = VIEW, vx = x - V.eye[0], vy = -y - V.eye[1], vz = z - V.eye[2];
+  const cz = vx * V.f[0] + vy * V.f[1] + vz * V.f[2]; if (cz < 0.2) return null;
+  return [V.cx + V.F * (vx * V.r[0] + vy * V.r[1] + vz * V.r[2]) / cz, V.cy - V.F * (vx * V.u[0] + vy * V.u[1] + vz * V.u[2]) / cz, cz];
+}
+function pickFloor(px, py, zp = 0) {          // the floor point under the pointer
+  const V = VIEW, a = (px - V.cx) / V.F, b = -(py - V.cy) / V.F;
+  const d = [0, 1, 2].map(i => V.f[i] + a * V.r[i] + b * V.u[i]); if (Math.abs(d[2]) < 1e-6) return null;
+  const t = (zp - V.eye[2]) / d[2]; if (t <= 0) return null;
+  return [V.eye[0] + t * d[0], -(V.eye[1] + t * d[1])];
+}
+function poly(g, pts, close) { let first = true; g.beginPath(); for (const p of pts) { if (!p) { first = true; continue; } first ? g.moveTo(p[0], p[1]) : g.lineTo(p[0], p[1]); first = false; } if (close) g.closePath(); }
+function circle3(cx, cy, cz, rad, n = 40) { const pts = []; for (let i = 0; i <= n; i++) { const a = 2 * Math.PI * i / n; pts.push(proj(cx + rad * Math.cos(a), cy + rad * Math.sin(a), cz)); } return pts; }
+function hull(pts) {                          // convex hull, for clipping the wavefronts to the room's outline
+  pts = pts.filter(Boolean).sort((a, b) => a[0] - b[0] || a[1] - b[1]); if (pts.length < 3) return pts;
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+  for (const p of pts) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of pts.slice().reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+function images3Dlist(src, maxOrder) {        // image sources for drawing (not culled by distance)
+  const out = [];
+  for (let i = -maxOrder; i <= maxOrder; i++) for (let j = -maxOrder; j <= maxOrder; j++) for (let k = -maxOrder; k <= maxOrder; k++) {
+    const o = Math.abs(i) + Math.abs(j) + Math.abs(k); if (o > maxOrder) continue;
+    out.push({ x: imgAxis(i, src[0], S.L), y: imgAxis(j, src[1], S.W), z: imgAxis(k, src[2], S.H), o });
+  }
+  return out;
+}
 
 function drawPlan(tms) {
-  setScale();
-  const { g, w, h } = P, s = P.scale, [L, W] = [S.L, S.W];
+  const { g, w, h } = P, [L, W, H] = [S.L, S.W, S.H];
+  setupView();
   g.clearRect(0, 0, w, h);
-  // 10 m grid across the maximum footprint
-  g.strokeStyle = 'rgba(255,255,255,0.035)'; g.lineWidth = 1;
-  for (let x = 0; x <= MAXL; x += 10) { const [px] = toPx(x, 0); g.beginPath(); g.moveTo(px, 14); g.lineTo(px, 14 + MAXW * s); g.stroke(); }
-  for (let y = 0; y <= MAXW; y += 10) { const [, py] = toPx(0, y); g.beginPath(); g.moveTo(20, py); g.lineTo(20 + MAXL * s, py); g.stroke(); }
-  // room glow follows the level at your seat
-  const [rx, ry] = toPx(0, 0), rw = L * s, rh = W * s;
-  g.fillStyle = `rgba(106,174,232,${0.03 + 0.22 * glow})`; g.fillRect(rx, ry, rw, rh);
-  // reflection paths (first order, 4 walls)
-  const p = S.piano, q = S.seat;
+  const bg = g.createRadialGradient(VIEW.cx, VIEW.cy, 10, VIEW.cx, VIEW.cy, Math.max(w, h) * 0.8);
+  bg.addColorStop(0, '#121824'); bg.addColorStop(1, '#090b10'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  const C8 = [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0], [0, 0, H], [L, 0, H], [L, W, H], [0, W, H]].map(c => proj(...c));
+  const fight = dance() === 'fight', V = VIEW, eyeW = [V.eye[0], -V.eye[1], V.eye[2]];
+  // far walls (the ones facing away from you) get a faint fill so the box reads as a volume
+  const faces = [[[0, 3, 7, 4], [-1, 0, 0], [0, W / 2, H / 2]], [[1, 2, 6, 5], [1, 0, 0], [L, W / 2, H / 2]], [[0, 1, 5, 4], [0, -1, 0], [L / 2, 0, H / 2]],
+                 [[3, 2, 6, 7], [0, 1, 0], [L / 2, W, H / 2]], [[4, 5, 6, 7], [0, 0, 1], [L / 2, W / 2, H]]];
+  for (const [ix, n, c] of faces) {
+    if ((eyeW[0] - c[0]) * n[0] + (eyeW[1] - c[1]) * n[1] + (eyeW[2] - c[2]) * n[2] > 0) continue;
+    if (ix.some(k => !C8[k])) continue;
+    g.fillStyle = 'rgba(201,206,216,0.035)'; poly(g, ix.map(k => C8[k]), true); g.fill();
+  }
+  // floor: glow follows the level at your seat; 5 m grid
+  if (C8.slice(0, 4).every(Boolean)) { g.fillStyle = `rgba(106,174,232,${0.05 + 0.2 * glow})`; poly(g, C8.slice(0, 4), true); g.fill(); }
+  g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1;
+  for (let x = 5; x < L; x += 5) { poly(g, [proj(x, 0, 0), proj(x, W, 0)]); g.stroke(); }
+  for (let y = 5; y < W; y += 5) { poly(g, [proj(0, y, 0), proj(L, y, 0)]); g.stroke(); }
+  // wavefronts: each echo is a sphere from an image source; drawn where it cuts the plane at the piano's height
+  const p = S.piano, q = S.seat, z0 = S.pz, beta = IRSTATS ? IRSTATS.ac.beta : 0.95, nowp = performance.now();
+  const plane = [proj(0, 0, z0), proj(L, 0, z0), proj(L, W, z0), proj(0, W, z0)], shell = hull(C8);
+  let hitSeat = 0;
+  if (plane.every(Boolean)) {
+    g.save(); poly(g, plane, true); g.clip();
+    for (const ev of events) {
+      const age = (nowp - ev.born) / 1000 * ev.rate, r = age * C, life = ev.kind === 'clap' ? 0.6 : ev.kind === 'note' ? 0.42 : 0.3;
+      if (age > life) { ev.dead = true; continue; }
+      const fade = 1 - age / life, imgs = ev.kind === 'clap' ? IMG3_CLAP : IMG3;
+      for (const im of imgs) {
+        const amp = ev.amp * Math.pow(beta, im.o) * fade; if (amp < 0.02) continue;
+        const dz = im.z - z0; if (Math.abs(dz) >= r) continue;
+        const rh = Math.sqrt(r * r - dz * dz);
+        g.strokeStyle = `rgba(226,180,92,${Math.min(0.95, amp * (im.o ? 0.7 : 1))})`;
+        g.lineWidth = ev.kind === 'clap' ? (im.o ? 1.3 : 2.2) : (im.o ? 1 : 1.7) * (ev.pitch < 48 ? 1.4 : 1);
+        poly(g, circle3(im.x, im.y, z0, rh, rh > 20 ? 64 : 40)); g.stroke();
+        const dq = Math.hypot(im.x - q[0], im.y - q[1], im.z - S.ez);
+        hitSeat += amp * Math.exp(-Math.abs(dq - r) / 1.5);
+      }
+    }
+    g.restore();
+    // the direct sound's sphere seen whole, faintly, inside the room's outline
+    if (shell.length > 2) {
+      g.save(); poly(g, shell, true); g.clip();
+      for (const ev of events) {
+        if (ev.dead || ev.kind !== 'note' && ev.kind !== 'clap') continue;
+        const age = (nowp - ev.born) / 1000 * ev.rate, r = age * C, c = proj(p[0], p[1], z0); if (!c) continue;
+        const fade = 1 - age / (ev.kind === 'clap' ? 0.6 : 0.42);
+        g.strokeStyle = `rgba(226,180,92,${0.18 * ev.amp * fade})`; g.lineWidth = 1; g.beginPath(); g.arc(c[0], c[1], V.F * r / c[2], 0, 7); g.stroke();
+      }
+      g.restore();
+    }
+  }
+  for (let i = events.length - 1; i >= 0; i--) if (events[i].dead) events.splice(i, 1);
+  // first-order reflection paths off all six surfaces (floor and ceiling too, now that there is height)
+  const head = [q[0], q[1], S.ez], src = [p[0], p[1], z0];
   if ($('paths').checked) {
     g.setLineDash([3, 4]); g.lineWidth = 1;
-    for (const [ax, plane] of [[0, 0], [0, L], [1, 0], [1, W]]) {
-      const im = [...p]; im[ax] = 2 * plane - p[ax];
-      const t = (plane - im[ax]) / (q[ax] - im[ax]); const hit = [im[0] + t * (q[0] - im[0]), im[1] + t * (q[1] - im[1])];
-      g.strokeStyle = 'rgba(226,180,92,0.35)'; g.beginPath(); g.moveTo(...toPx(...p)); g.lineTo(...toPx(...hit)); g.lineTo(...toPx(...q)); g.stroke();
+    for (const [ax, pl, col] of [[0, 0, '226,180,92'], [0, L, '226,180,92'], [1, 0, '226,180,92'], [1, W, '226,180,92'], [2, 0, '163,168,179'], [2, H, '163,168,179']]) {
+      const im = [...src]; im[ax] = 2 * pl - src[ax];
+      const t = (pl - im[ax]) / (head[ax] - im[ax]), hit = [0, 1, 2].map(k => im[k] + t * (head[k] - im[k]));
+      g.strokeStyle = `rgba(${col},0.4)`; poly(g, [proj(...src), proj(...hit), proj(...head)]); g.stroke();
+      const hp = proj(...hit); if (hp) { g.fillStyle = `rgba(${col},0.7)`; g.beginPath(); g.arc(hp[0], hp[1], 2.5, 0, 7); g.fill(); }
     }
     g.setLineDash([]);
   }
-  g.strokeStyle = 'rgba(226,180,92,0.6)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(...toPx(...p)); g.lineTo(...toPx(...q)); g.stroke();
-  // wavefronts, clipped to the room
-  g.save(); g.beginPath(); g.rect(rx, ry, rw, rh); g.clip();
-  const beta = IRSTATS ? IRSTATS.ac.beta : 0.95, nowp = performance.now();
-  let hitSeat = 0;
-  for (const ev of events) {
-    const age = (nowp - ev.born) / 1000 * ev.rate;          // physical seconds
-    const r = age * C, life = ev.kind === 'clap' ? 0.6 : ev.kind === 'note' ? 0.42 : 0.3;
-    if (age > life) { ev.dead = true; continue; }
-    const fade = 1 - age / life;
-    const imgs = ev.imgs || (ev.kind === 'clap' ? IMG2D_CLAP : IMG2D), rgb = ev.rgb || '226,180,92';
-    if (ev.at && age < 0.1) {                                   // the flash of the blow itself
-      const [fx, fy] = toPx(...ev.at), rr = (ev.kind === 'shot' ? 22 : 14) * (1 - age / 0.1) + 3;
-      g.fillStyle = `rgba(${ev.kind === 'shot' ? '255,240,200' : rgb},${0.9 * (1 - age / 0.1)})`; g.beginPath(); g.arc(fx, fy, rr, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(226,180,92,0.65)'; g.lineWidth = 1.3; poly(g, [proj(...src), proj(...head)]); g.stroke();
+  // trail on the floor
+  if (waltzOn() && !fight && trail.length > 1) { g.strokeStyle = 'rgba(106,174,232,0.3)'; g.lineWidth = 1.5; poly(g, trail.map(t => proj(t[0], t[1], 0.01))); g.stroke(); }
+  // figures, far to near
+  const items = [{ z: proj(p[0], p[1], 1)?.[2] ?? 0, draw: () => fight ? drawHologram3D(tms) : drawPiano3D() },
+                 { z: proj(q[0], q[1], S.ez)?.[2] ?? 0, draw: () => drawListener3D(hitSeat) }];
+  if (fight && FG.opp) items.push({ z: proj(FG.opp[0], FG.opp[1], S.ez)?.[2] ?? 0, draw: drawRival3D });
+  items.sort((a, b) => b.z - a.z).forEach(it => it.draw());
+  // room edges on top, so the box stays crisp
+  g.strokeStyle = 'rgba(201,206,216,0.75)'; g.lineWidth = 1.6;
+  for (const [a, b] of [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]]) { if (C8[a] && C8[b]) { poly(g, [C8[a], C8[b]]); g.stroke(); } }
+  const lab = C8.slice(0, 4).filter(Boolean).sort((a, b) => b[1] - a[1])[0]; if (lab) { g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textBaseline = 'top'; g.textAlign = 'left'; g.fillText(`${L} × ${W} × ${H} m`, lab[0] + 6, lab[1] + 6); }
+  // move names and the clap clock sit above your head
+  const hp = proj(q[0], q[1], S.ez + 1.2);
+  if (hp) {
+    g.font = '500 13px "JetBrains Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+    let line = hp[1];
+    if (dance() === 'tango' && TG.name) { g.fillStyle = COL.seat; g.fillText(TG.name, hp[0], line); line -= 18; }
+    if (fight && FG.name) { g.fillStyle = FG.mine ? COL.seat : COL.rival; g.fillText(FG.name, hp[0], line); line -= 18; }
+    if (clapEvent && !clapEvent.dead) {
+      const ms = (nowp - clapEvent.born) * clapEvent.rate; g.fillStyle = COL.ink;
+      g.fillText(`clap + ${ms.toFixed(0).padStart(3, ' ')} ms` + (clapEvent.rate < 1 ? `  (${Math.round(1 / clapEvent.rate)}× slower)` : ''), hp[0], line);
     }
-    for (const im of imgs) {
-      const amp = ev.amp * Math.pow(beta, im.o) * fade;
-      if (amp < 0.02) continue;
-      const [cx, cy] = toPx(im.x, im.y);
-      g.strokeStyle = `rgba(${rgb},${Math.min(0.95, amp * (im.o ? 0.75 : 1))})`;
-      g.lineWidth = ev.kind === 'clap' ? (im.o ? 1.4 : 2.4) : (im.o ? 1 : 1.8) * (ev.pitch < 48 ? 1.5 : 1);
-      g.beginPath(); g.arc(cx, cy, r * s, 0, Math.PI * 2); g.stroke();
-      const dq = Math.hypot(im.x - q[0], im.y - q[1]);
-      hitSeat += amp * Math.exp(-Math.abs(dq - r) / 1.5);
-    }
-  }
-  g.restore();
-  for (let i = events.length - 1; i >= 0; i--) if (events[i].dead) events.splice(i, 1);
-  // walls
-  g.strokeStyle = COL.wall; g.lineWidth = 2.5; g.strokeRect(rx, ry, rw, rh);
-  g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textBaseline = 'top';
-  g.fillText(`${L} × ${W} × ${S.H} m`, rx + 6, ry + rh + 6);
-  // scale bar
-  const sb = 10 * s, [bx, by] = [w - 20 - sb, h - 14];
-  g.strokeStyle = COL.ink3; g.lineWidth = 1.5; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + sb, by); g.moveTo(bx, by - 4); g.lineTo(bx, by + 1); g.moveTo(bx + sb, by - 4); g.lineTo(bx + sb, by + 1); g.stroke();
-  g.textBaseline = 'bottom'; g.textAlign = 'center'; g.fillText('10 m', bx + sb / 2, by - 4); g.textAlign = 'left';
-  // piano: a grand seen from above
-  const [px, py] = toPx(...p), k = Math.max(0.6, s / 9), fight = dance() === 'fight';
-  if (fight) drawHologram(g, px, py, k, tms);
-  else {
-    g.save(); g.translate(px, py); g.fillStyle = COL.brass;
-    g.beginPath(); g.moveTo(-7 * k, -6 * k); g.lineTo(-7 * k, 6 * k); g.lineTo(4 * k, 6 * k);
-    g.bezierCurveTo(14 * k, 6 * k, 14 * k, -1 * k, 9 * k, -3 * k); g.lineTo(0, -6 * k); g.closePath(); g.fill(); g.restore();
-  }
-  // waltz trail
-  if (waltzOn() && !fight && trail.length > 1) {
-    g.strokeStyle = 'rgba(106,174,232,0.28)'; g.lineWidth = 1.5; g.beginPath();
-    trail.forEach((pt, i) => { const [x, y] = toPx(...pt); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
-  }
-  // seat: head with two ears and a nose for facing; flashes when a wavefront passes
-  const [sx, sy] = toPx(...q), fl = Math.min(1, hitSeat), f = [Math.cos(S.face), Math.sin(S.face)], lv = leftVec(S.face);
-  seatFlash = Math.max(seatFlash * 0.85, fl);
-  g.fillStyle = `rgba(106,174,232,${0.18 + 0.5 * seatFlash})`; g.beginPath(); g.arc(sx, sy, 9 + 9 * seatFlash, 0, 7); g.fill();
-  if (fight) drawRival(g);
-  else if (waltzOn()) {   // partner, held at arm's length in front of you
-    const [ax, ay] = [sx + f[0] * 14, sy + f[1] * 14];
-    g.strokeStyle = COL.ink2; g.lineWidth = 1.5; g.beginPath(); g.arc(ax, ay, 5, 0, 7); g.stroke();
-  }
-  g.fillStyle = COL.seat; g.beginPath(); g.moveTo(sx + f[0] * 10, sy + f[1] * 10); g.lineTo(sx - lv[0] * 4 + f[0] * 4, sy - lv[1] * 4 + f[1] * 4); g.lineTo(sx + lv[0] * 4 + f[0] * 4, sy + lv[1] * 4 + f[1] * 4); g.fill();
-  g.beginPath(); g.arc(sx, sy, 6, 0, 7); g.fill();
-  g.font = '700 8px "Instrument Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = COL.ink; g.beginPath(); g.arc(sx + lv[0] * 6, sy + lv[1] * 6, 2.6, 0, 7); g.arc(sx - lv[0] * 6, sy - lv[1] * 6, 2.6, 0, 7); g.fill();
-  g.fillStyle = COL.panel; g.fillText('L', sx + lv[0] * 6, sy + lv[1] * 6 + 0.5); g.fillText('R', sx - lv[0] * 6, sy - lv[1] * 6 + 0.5); g.textAlign = 'left';
-  g.font = '600 12px "Instrument Sans", sans-serif'; g.textBaseline = 'middle';
-  g.fillStyle = fight ? COL.holo : COL.brass; g.fillText(fight ? 'hologram' : 'piano', px + 15 * k, py - 10);
-  g.fillStyle = COL.seat; g.fillText('you', sx + 14, sy - 10);
-  if (dance() === 'tango' && TG.name) {
-    g.font = '500 13px "JetBrains Mono", monospace'; g.fillStyle = COL.seat; g.textBaseline = 'top'; g.textAlign = 'left';
-    g.fillText(TG.name, 24, 18);
-  }
-  if (fight && FG.name) {
-    g.font = '500 13px "JetBrains Mono", monospace'; g.textBaseline = 'top'; g.textAlign = 'left';
-    g.fillStyle = FG.mine ? COL.seat : COL.rival; g.fillText(FG.name, 24, 18);
-    if (!HOLO.on) { g.fillStyle = COL.holo; g.fillText('signal lost', 24, 36); }
-  }
-  // clap clock
-  if (clapEvent && !clapEvent.dead) {
-    const ms = (nowp - clapEvent.born) * clapEvent.rate;
-    g.font = '500 13px "JetBrains Mono", monospace'; g.fillStyle = COL.ink; g.textBaseline = 'top'; g.textAlign = 'right';
-    g.fillText(`clap + ${ms.toFixed(0).padStart(3, ' ')} ms` + (clapEvent.rate < 1 ? `  (${Math.round(1 / clapEvent.rate)}× slower)` : ''), w - 20, 18);
     g.textAlign = 'left';
   }
+}
+function shadow3D(x, y, rad, col) { g3().fillStyle = col; poly(g3(), circle3(x, y, 0.01, rad, 24), true); g3().fill(); }
+const g3 = () => P.g;
+function stem3D(x, y, z, col) { const g = P.g; g.strokeStyle = col; g.lineWidth = 1; poly(g, [proj(x, y, 0), proj(x, y, z)]); g.stroke(); }
+function drawPiano3D() {
+  const g = P.g, [x0, y0] = S.piano, sc = 0.16;
+  const outline = [[-7, -6], [-7, 6], [4, 6], [8.3, 5.4], [10.8, 3.6], [11.6, 1.3], [10.7, -1.2], [9, -3], [0, -6]].map(([a, b]) => [x0 + a * sc, y0 + b * sc]);
+  g.fillStyle = 'rgba(0,0,0,0.35)'; poly(g, outline.map(([x, y]) => proj(x, y, 0.01)), true); g.fill();
+  g.strokeStyle = 'rgba(226,180,92,0.6)'; g.lineWidth = 1.2;
+  for (const k of [0, 3, 6]) { const [x, y] = outline[k]; poly(g, [proj(x, y, 0), proj(x, y, 0.95)]); g.stroke(); }
+  g.fillStyle = COL.brass; poly(g, outline.map(([x, y]) => proj(x, y, 1.0)), true); g.fill();
+  const lp = proj(x0, y0, 1.6); if (lp) { g.font = '600 12px "Instrument Sans", sans-serif'; g.textBaseline = 'middle'; g.fillStyle = COL.brass; g.fillText('piano', lp[0] + 14, lp[1]); }
+}
+function head3D(x, y, z, face, col, rad = 0.28) {
+  const g = P.g, c = proj(x, y, z); if (!c) return null;
+  const pr = Math.max(4, VIEW.F * rad / c[2]), f = [Math.cos(face), Math.sin(face)];
+  const nose = proj(x + f[0] * rad * 1.9, y + f[1] * rad * 1.9, z);
+  g.fillStyle = col; g.beginPath(); g.arc(c[0], c[1], pr, 0, 7); g.fill();
+  if (nose) { g.strokeStyle = col; g.lineWidth = Math.max(2, pr * 0.45); g.lineCap = 'round'; g.beginPath(); g.moveTo(c[0], c[1]); g.lineTo(nose[0], nose[1]); g.stroke(); g.lineCap = 'butt'; }
+  return { c, pr };
+}
+function drawListener3D(hitSeat) {
+  const g = P.g, q = S.seat, fl = Math.min(1, hitSeat), lv = leftVec(S.face);
+  seatFlash = Math.max(seatFlash * 0.85, fl);
+  shadow3D(q[0], q[1], 0.5, 'rgba(0,0,0,0.4)'); stem3D(q[0], q[1], S.ez, 'rgba(106,174,232,0.5)');
+  if (waltzOn() && dance() !== 'fight') { const f = [Math.cos(S.face), Math.sin(S.face)]; head3D(q[0] + f[0] * 0.55, q[1] + f[1] * 0.55, S.ez, S.face + Math.PI, 'rgba(163,168,179,0.75)', 0.24); }
+  const c = proj(q[0], q[1], S.ez); if (!c) return;
+  const pr = Math.max(4, VIEW.F * 0.28 / c[2]);
+  g.fillStyle = `rgba(106,174,232,${0.15 + 0.45 * seatFlash})`; g.beginPath(); g.arc(c[0], c[1], pr * (2 + 1.5 * seatFlash), 0, 7); g.fill();
+  head3D(q[0], q[1], S.ez, S.face, COL.seat);
+  g.font = '700 8px "Instrument Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const [sgn, lab] of [[1, 'L'], [-1, 'R']]) {
+    const e = proj(q[0] + sgn * lv[0] * 0.36, q[1] + sgn * lv[1] * 0.36, S.ez); if (!e) continue;
+    const er = Math.max(3, pr * 0.42); g.fillStyle = COL.ink; g.beginPath(); g.arc(e[0], e[1], er, 0, 7); g.fill();
+    if (er > 4) { g.fillStyle = COL.panel; g.fillText(lab, e[0], e[1] + 0.5); }
+  }
+  g.textAlign = 'left'; g.font = '600 12px "Instrument Sans", sans-serif'; g.fillStyle = COL.seat; g.fillText('you', c[0] + pr + 8, c[1] + pr + 6);
+}
+function drawRival3D() {
+  const g = P.g, o = FG.opp, a = Math.atan2(S.seat[1] - o[1], S.seat[0] - o[0]);
+  shadow3D(o[0], o[1], 0.5, 'rgba(0,0,0,0.4)'); stem3D(o[0], o[1], S.ez, 'rgba(239,107,91,0.5)');
+  const hd = head3D(o[0], o[1], S.ez, a, COL.rival); if (!hd) return;
+  g.font = '600 12px "Instrument Sans", sans-serif'; g.textBaseline = 'middle'; g.fillStyle = COL.rival; g.fillText('rival', hd.c[0] + hd.pr + 8, hd.c[1] + hd.pr + 6);
+}
+function drawHologram3D(tms) {
+  const g = P.g, [x0, y0] = S.piano, on = HOLO.on;
+  const flick = on ? 0.6 + 0.25 * Math.sin(tms / 37) * Math.sin(tms / 113) : 0.07, jit = on ? 0 : (Math.random() - 0.5) * 0.3;
+  const base = proj(x0, y0, 0); if (base) { const gr = g.createRadialGradient(base[0], base[1], 2, base[0], base[1], 60); gr.addColorStop(0, `rgba(127,227,216,${0.3 * flick})`); gr.addColorStop(1, 'rgba(127,227,216,0)'); g.fillStyle = gr; g.beginPath(); g.arc(base[0], base[1], 60, 0, 7); g.fill(); }
+  g.strokeStyle = `rgba(127,227,216,${flick})`; g.lineWidth = 1;
+  for (let z = 0.05; z < 1.85; z += 0.07) {         // a figure made of horizontal scan lines
+    const rad = z > 1.5 ? 0.13 * Math.sqrt(Math.max(0, 1 - Math.pow((z - 1.67) / 0.17, 2))) : z > 1.4 ? 0.07 : z > 0.9 ? 0.19 : 0.12 + 0.12 * (0.9 - z);
+    if (rad < 0.02) continue;
+    const off = on && Math.random() < 0.05 ? (Math.random() - 0.5) * 0.25 : 0;
+    poly(g, circle3(x0 + jit + off, y0, z, rad, 14)); g.stroke();
+  }
+  const lp = proj(x0, y0, 2.2); if (lp) { g.font = '600 12px "Instrument Sans", sans-serif'; g.textBaseline = 'middle'; g.fillStyle = COL.holo; g.fillText(on ? 'hologram' : 'hologram · signal lost', lp[0] + 10, lp[1]); }
 }
 let seatFlash = 0, glow = 0;
 
@@ -601,7 +717,7 @@ function drawTrace() {
 }
 
 // ---------- UI wiring --------------------------------------------------------
-let IMG2D = [], IMG2D_CLAP = [];
+let IMG3 = [], IMG3_CLAP = [];
 function refreshGeometry(rebuild = true) {
   for (const k of ['L', 'W', 'H', 'A']) $(k).value = S[k];
   $('Lo').textContent = S.L + ' m'; $('Wo').textContent = S.W + ' m'; $('Ho').textContent = S.H + ' m';
@@ -611,7 +727,7 @@ function refreshGeometry(rebuild = true) {
   for (const b of $('Aticks').children) b.classList.toggle('on', b.dataset.name === mat.name);
   for (const pt of [S.piano, S.seat]) { pt[0] = Math.max(0.6, Math.min(S.L - 0.6, pt[0])); pt[1] = Math.max(0.8, Math.min(S.W - 0.8, pt[1])); }
   if (!waltzOn()) facePiano();
-  IMG2D = images2D(3); IMG2D_CLAP = images2D(6);
+  IMG3 = images3Dlist([S.piano[0], S.piano[1], S.pz], 2); IMG3_CLAP = images3Dlist([S.piano[0], S.piano[1], S.pz], 4);
   if (rebuild) scheduleIR();
 }
 let irTimer = null;
@@ -646,17 +762,23 @@ $('seek').addEventListener('click', e => { if (!buf) return; const r = e.current
 
 let drag = null;
 plan.addEventListener('pointerdown', e => {
-  const r = plan.getBoundingClientRect(), m = toM(e.clientX - r.left, e.clientY - r.top);
-  const dp = Math.hypot(m[0] - S.piano[0], m[1] - S.piano[1]), ds = Math.hypot(m[0] - S.seat[0], m[1] - S.seat[1]), tol = 14 / P.scale + 1;
-  drag = (dp < ds || waltzOn()) ? (dp < tol ? 'piano' : null) : (ds < tol ? 'seat' : null);
-  if (drag) { plan.setPointerCapture(e.pointerId); plan.classList.add('dragging'); }
+  if (!VIEW) return;
+  const near = (x, y, z) => { const c = proj(x, y, z); return c ? Math.hypot(c[0] - e.clientX, c[1] - e.clientY) : 1e9; };
+  const dp = Math.min(near(S.piano[0], S.piano[1], 1), near(S.piano[0], S.piano[1], 0)), ds = waltzOn() ? 1e9 : Math.min(near(S.seat[0], S.seat[1], S.ez), near(S.seat[0], S.seat[1], 0));
+  drag = dp < 26 && dp <= ds ? 'piano' : ds < 26 ? 'seat' : { x: e.clientX, y: e.clientY, yaw: CAM.yaw, pitch: CAM.pitch };
+  try { plan.setPointerCapture(e.pointerId); } catch (err) {} plan.classList.add('dragging');
 });
 plan.addEventListener('pointermove', e => {
-  if (!drag) return; const r = plan.getBoundingClientRect(), m = toM(e.clientX - r.left, e.clientY - r.top);
-  S[drag][0] = m[0]; S[drag][1] = m[1]; refreshGeometry();
+  if (!drag) return;
+  if (typeof drag === 'string') { const m = pickFloor(e.clientX, e.clientY); if (!m) return; S[drag][0] = m[0]; S[drag][1] = m[1]; refreshGeometry(); return; }
+  if (CAM.top) { CAM.top = false; $('v3d').checked = true; }
+  CAM.yaw = drag.yaw - (e.clientX - drag.x) * 0.006; CAM.pitch = Math.max(0.05, Math.min(1.5, drag.pitch + (e.clientY - drag.y) * 0.005));
 });
 const endDrag = () => { drag = null; plan.classList.remove('dragging'); };
 plan.addEventListener('pointerup', endDrag); plan.addEventListener('pointercancel', endDrag);
+plan.addEventListener('wheel', e => { e.preventDefault(); CAM.zoom = Math.max(0.25, Math.min(3, CAM.zoom * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+document.querySelectorAll('input[name=view]').forEach(r => r.addEventListener('change', e => { CAM.top = e.target.value === 'top'; }));
+$('vReset').addEventListener('click', () => { Object.assign(CAM, { yaw: 0.55, pitch: 0.42, zoom: 1, top: false }); $('v3d').checked = true; });
 
 const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 function drawProgress() { if (!buf) return; const t = now(); $('tcur').textContent = fmt(t); $('tbar').style.width = (100 * t / buf.duration) + '%'; }
@@ -742,20 +864,6 @@ function stepHolo(ts) {
     HOLO.next = ts + (HOLO.blinks > 0 ? 60 + Math.random() * 120 : 3500 + Math.random() * 7000);
   }
 }
-function drawHologram(g, px, py, k, tms) {
-  const flick = HOLO.on ? 0.65 + 0.25 * Math.sin(tms / 37) * Math.sin(tms / 113) : 0.08, jit = HOLO.on ? 0 : (Math.random() - 0.5) * 8;
-  g.save(); g.translate(px + jit, py);
-  const glow = g.createRadialGradient(0, 0, 2, 0, 0, 26 * k); glow.addColorStop(0, `rgba(127,227,216,${0.35 * flick})`); glow.addColorStop(1, 'rgba(127,227,216,0)');
-  g.fillStyle = glow; g.beginPath(); g.arc(0, 0, 26 * k, 0, 7); g.fill();
-  g.strokeStyle = `rgba(127,227,216,${flick})`; g.lineWidth = 1;             // a figure made of scan lines
-  for (let yy = -10 * k; yy <= 10 * k; yy += 2) {
-    const head = yy < -5 * k, half = head ? 3 * k * Math.sqrt(Math.max(0, 1 - Math.pow((yy + 7.5 * k) / (2.6 * k), 2))) : (2.5 + 0.35 * (yy + 5 * k) / k) * k * 0.9;
-    if (half <= 0.3) continue;
-    const off = HOLO.on && Math.random() < 0.04 ? (Math.random() - 0.5) * 6 : 0;
-    g.beginPath(); g.moveTo(-half + off, yy); g.lineTo(half + off, yy); g.stroke();
-  }
-  g.restore();
-}
 // You and a rival circle a point that drifts across the floor. One move per beat, in a phrase of 16:
 // you jab, they swing (you block), ... beat 7 they land one and your head turns, beat 11 you are thrown
 // 2.4 m, beat 15 a stand-off at arm's length. No sound effects: only your position and facing change,
@@ -794,16 +902,8 @@ function stepFight(ts) {
   if (ts - lastIRTs > 40) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
 }
 const fightPos = (c, th, sep) => ({ you: [c[0] + sep / 2 * Math.cos(th), c[1] + sep / 2 * Math.sin(th)], opp: [c[0] - sep / 2 * Math.cos(th), c[1] - sep / 2 * Math.sin(th)] });
-function drawRival(g) {
-  if (!FG.opp) return;
-  const [ox, oy] = toPx(...FG.opp), [sx, sy] = toPx(...S.seat), a = Math.atan2(sy - oy, sx - ox);
-  g.fillStyle = 'rgba(239,107,91,0.2)'; g.beginPath(); g.arc(ox, oy, 11, 0, 7); g.fill();
-  g.fillStyle = COL.rival; g.beginPath(); g.arc(ox, oy, 6, 0, 7); g.fill();
-  g.beginPath(); g.moveTo(ox + Math.cos(a) * 10, oy + Math.sin(a) * 10); g.lineTo(ox + Math.cos(a + 1.2) * 5, oy + Math.sin(a + 1.2) * 5); g.lineTo(ox + Math.cos(a - 1.2) * 5, oy + Math.sin(a - 1.2) * 5); g.fill();
-  g.font = '600 12px "Instrument Sans", sans-serif'; g.textBaseline = 'middle'; g.fillText('rival', ox + 12, oy + 14);
-}
 const HINTS = {
-  off: 'Drag the gold piano or the blue seat. Rings are wall reflections in the plan; floor and ceiling bounces are in the sound and the echogram but not drawn here.',
+  off: 'Drag empty space to turn the room, scroll to zoom, drag the piano or your head to move them across the floor. Rings are where each echo’s sphere crosses the piano’s height; dashed lines are the first bounce off each wall, the floor and the ceiling.',
   fight: 'Showroom fight: an abandoned showroom, a hologram singer on the stage, and you (blue) trading blows with a rival (red) on the floor, on the beat. No sound effects: the fight only moves you and turns your head, so the song swings between your ears and comes nearer and farther. When the hologram flickers, the song cuts out. Load a slow ballad of your own and wear headphones.',
   waltz: 'You are waltzing: half a turn per bar on the bass, travelling anticlockwise round the room. L and R mark your ears. Wear headphones and listen to the piano and its echoes swing from ear to ear as you turn.',
   tango: 'You are dancing tango: one move per beat, sharp and then still. Four walking steps, two ochos (pivots of 75°), a fast giro, then a corte where you freeze facing the piano. Wear headphones: the sound jumps where the waltz glides.',
@@ -836,7 +936,7 @@ function frame(ts) {
 
 // ---------- boot -------------------------------------------------------------
 layout(); refreshGeometry(false); buildEarly(44100); showStats();
-new ResizeObserver(() => layout()).observe(document.querySelector('.stage'));
+new ResizeObserver(() => layout()).observe(document.querySelector('.stage')); window.addEventListener('resize', layout);
 requestAnimationFrame(frame);
 // audio per piece: fetched once, decoded on first play (decoding needs the AudioContext, which needs a click)
 const RAW = {}, DECODED = {};
