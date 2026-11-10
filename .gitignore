@@ -1,0 +1,7 @@
+# large or re-downloadable / re-renderable
+soundfonts/
+dl/
+out/*.wav
+out/*.m4a
+__pycache__/
+.DS_Store

@@ -1,0 +1,850 @@
+<title>Nocturne Echo Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working stage. Floor plan of the hall on the left, the ear's view (numbers, echogram, level trace) on the right; controls in one strip above. Stacks to one column on phones.
+   Deliberately single-theme: the house lights are down. */
+:root {
+  color-scheme: dark;
+  --bg: #0c0f14;          /* auditorium dark, blue-biased */
+  --panel: #131821;
+  --line: #232b38;
+  --ink: #e9e6df;
+  --ink-2: #a3a8b3;
+  --ink-3: #6b7280;
+  --brass: #e2b45c;       /* sound: the piano and its wavefronts */
+  --seat: #6aaee8;        /* you: the listener */
+  --wall: #c9ced8;
+  --f-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 28px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: 0.005em; text-wrap: balance; }
+h1 em { color: var(--brass); }
+.sub { color: var(--ink-2); max-width: 70ch; line-height: 1.5; margin: 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sep { width: 1px; align-self: stretch; background: var(--line); }
+button, .seg label {
+  font: 500 13px/1 var(--f-body); color: var(--ink); background: #1b2230; border: 1px solid var(--line);
+  border-radius: 7px; padding: 9px 12px; cursor: pointer;
+}
+button:hover, .seg label:hover { border-color: #3a4558; }
+button:focus-visible, input:focus-visible + label, input[type=range]:focus-visible { outline: 2px solid var(--seat); outline-offset: 2px; }
+button.primary { background: var(--brass); color: #1a1408; border-color: var(--brass); min-width: 92px; }
+button[disabled] { opacity: .5; cursor: wait; }
+.seg { display: inline-flex; gap: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { border-radius: 0; margin-left: -1px; }
+.seg label:first-of-type { border-radius: 7px 0 0 7px; margin-left: 0; }
+.seg label:last-of-type { border-radius: 0 7px 7px 0; }
+.seg input:checked + label { background: #2a3446; border-color: #4a5870; }
+.lbl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.slider { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; min-width: 190px; flex: 1 1 190px; }
+.slider.walls { flex: 1 1 100%; }
+.track { position: relative; padding-bottom: 17px; min-width: 0; }
+.track input { display: block; margin: 0; }
+.ticks { position: absolute; left: 8px; right: 8px; bottom: 0; height: 15px; }
+.ticks button { position: absolute; top: 2px; transform: translateX(-50%); padding: 0 2px; border: 0; border-radius: 3px; background: none;
+  font: 10.5px/1.2 var(--f-body); color: var(--ink-3); cursor: pointer; white-space: nowrap; }
+.ticks button::before { content: ''; position: absolute; left: 50%; top: -5px; width: 1px; height: 4px; background: var(--ink-3); }
+.ticks button:first-child { transform: translateX(-4px); }
+.ticks button:first-child::before { left: 4px; }
+.ticks button:hover, .ticks button.on { color: var(--ink); }
+.ticks button.on::before { background: var(--brass); height: 5px; }
+@media (max-width: 600px) {
+  .track { padding-bottom: 30px; } .ticks { height: 28px; }
+  .ticks button:nth-child(even) { top: 15px; }
+  .ticks button:nth-child(even)::before { top: -18px; height: 17px; opacity: .6; }
+}
+.slider output { font: 12px var(--f-data); color: var(--ink-2); min-width: 6ch; text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--brass); }
+.check { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--seat); }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.card h2 { margin: 0; font: 600 12px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.hint { margin: 0; color: var(--ink-3); font-size: 12.5px; line-height: 1.45; }
+canvas { display: block; width: 100%; touch-action: none; }
+#plan { cursor: grab; }
+#plan.dragging { cursor: grabbing; }
+.side { display: grid; gap: 14px; align-content: start; min-width: 0; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
+.stat { display: grid; gap: 2px; }
+.stat b { font: 500 20px var(--f-data); font-variant-numeric: tabular-nums; color: var(--ink); }
+.stat b small { font-size: 12px; color: var(--ink-3); margin-left: 2px; }
+.stat span { font-size: 11.5px; color: var(--ink-3); line-height: 1.3; }
+
+.progress { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font: 12px var(--f-data); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bar { height: 6px; background: #1d2431; border-radius: 3px; position: relative; cursor: pointer; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--brass); border-radius: 3px; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
+footer { color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+footer a { color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Nocturne <em>Echo</em> Room</h1>
+    <p class="sub">Chopin, Nocturne in E♭ major, Op. 9 No. 2, played in a room you shape. Drag the piano or your seat, resize the hall, change its walls, and hear the echo change live. Every ring is a wavefront; the rings that start outside the room are its echoes.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="Playback and room controls">
+    <div class="group">
+      <button id="play" class="primary" disabled>Loading…</button>
+      <button id="clap" title="One handclap. You hear it in real time; the picture shows it slowed down.">Clap</button>
+      <label class="check"><input id="roomOn" type="checkbox" checked> Room sound</label>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <span class="lbl">Piece</span>
+      <div class="seg" role="radiogroup" aria-label="Piece">
+        <input type="radio" name="piece" id="pcNoct" value="nocturne" checked><label for="pcNoct">Nocturne Op. 9/2</label>
+        <input type="radio" name="piece" id="pcValse" value="valse"><label for="pcValse">Valse brillante Op. 34/1</label>
+        <input type="radio" name="piece" id="pcTango" value="tango"><label for="pcTango">Albéniz Tango</label>
+        <input type="radio" name="piece" id="pcUser" value="user" disabled><label for="pcUser" id="pcUserLbl" hidden>Your track</label>
+      </div>
+      <button id="loadBtn" title="Play your own audio file (MP3, M4A, WAV, FLAC) in the room. It is decoded in this browser and never uploaded.">Load your track…</button>
+      <input id="file" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg" hidden>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <span class="lbl">You dance</span>
+      <div class="seg" role="radiogroup" aria-label="Dance" title="Your seat moves and turns with the music. Wear headphones.">
+        <input type="radio" name="dance" id="dOff" value="off" checked><label for="dOff">Sit</label>
+        <input type="radio" name="dance" id="dWaltz" value="waltz"><label for="dWaltz">Waltz</label>
+        <input type="radio" name="dance" id="dTango" value="tango"><label for="dTango">Tango</label>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <span class="lbl">Room</span>
+      <div class="seg" role="radiogroup" aria-label="Room preset">
+        <input type="radio" name="preset" id="pMarble" value="marble" checked><label for="pMarble">Large space</label>
+        <input type="radio" name="preset" id="pHall" value="hall"><label for="pHall">Concert hall</label>
+        <input type="radio" name="preset" id="pSalon" value="salon"><label for="pSalon">Salon</label>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <span class="lbl">Clap replay</span>
+      <div class="seg" role="radiogroup" aria-label="Clap replay speed">
+        <input type="radio" name="speed" id="s1" value="1"><label for="s1">1×</label>
+        <input type="radio" name="speed" id="s4" value="0.25"><label for="s4">¼×</label>
+        <input type="radio" name="speed" id="s10" value="0.1"><label for="s10">1/10×</label>
+        <input type="radio" name="speed" id="s30" value="0.0333" checked><label for="s30">1/30×</label>
+      </div>
+      <label class="check"><input id="paths" type="checkbox" checked> Reflection paths</label>
+    </div>
+    <div class="slider" style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:10px 22px;min-width:0">
+      <div class="slider"><span class="lbl">Length</span><input id="L" type="range" min="12" max="100" step="1"><output id="Lo"></output></div>
+      <div class="slider"><span class="lbl">Width</span><input id="W" type="range" min="8" max="50" step="1"><output id="Wo"></output></div>
+      <div class="slider"><span class="lbl">Height</span><input id="H" type="range" min="4" max="35" step="0.5"><output id="Ho"></output></div>
+      <div class="slider walls"><span class="lbl">Walls</span><div class="track"><input id="A" type="range" min="0" max="100" step="1" aria-label="Wall absorption, hard marble to heavy curtains"><div class="ticks" id="Aticks"></div></div><output id="Ao"></output></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <h2>Floor plan, seen from above</h2>
+      <canvas id="plan" aria-label="Floor plan of the room with draggable piano and listener"></canvas>
+      <div class="progress"><span id="tcur">0:00</span><div class="bar" id="seek" title="Seek"><i id="tbar"></i></div><span id="tdur">3:45</span></div>
+      <p class="hint">Audio: <span id="fmt">FLAC, lossless</span> · 16-bit / 44.1 kHz, dry, mono (the room adds the stereo).</p>
+      <p class="hint" id="planHint">Drag the gold piano or the blue seat. Rings are wall reflections in the plan; floor and ceiling bounces are in the sound and the echogram but not drawn here.</p>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h2>At your seat</h2>
+        <div class="stats">
+          <div class="stat"><b id="rt">–</b><span>reverb time RT60 (s)</span></div>
+          <div class="stat"><b id="dist">–</b><span>distance to piano (m)</span></div>
+          <div class="stat"><b id="delay">–</b><span>sound arrives after (ms)</span></div>
+          <div class="stat"><b id="itdg">–</b><span>gap to first echo (ms)</span></div>
+          <div class="stat"><b id="rc">–</b><span>critical distance (m)</span></div>
+          <div class="stat"><b id="dr">–</b><span>direct vs. reverb (dB)</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Echogram, first 600 ms</h2>
+        <canvas id="echo" aria-label="Echogram: sound energy arriving at your seat over the first 600 milliseconds"></canvas>
+        <p class="hint">Energy reaching your left ear, 2 ms bins, relative to the direct sound. Spikes are single echoes; the floor rising after them is the diffuse tail.</p>
+      </div>
+      <div class="card">
+        <h2>Level, last 8 seconds</h2>
+        <canvas id="trace" aria-label="Level of the dry piano and of the sound at your seat over the last eight seconds"></canvas>
+        <div class="legend"><span><i style="background:var(--brass)"></i>Piano, no room</span><span><i style="background:var(--seat)"></i>At your seat</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Performances: Chopin Nocturne (2011) and Valse brillante (2015), and Albéniz, Tango in D arr. Godowsky (2009), International Piano-e-Competition, from the <a href="https://magenta.tensorflow.org/datasets/maestro" target="_blank" rel="noopener">MAESTRO v3 dataset</a> (CC BY-NC-SA 4.0). Piano: <a href="https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html" target="_blank" rel="noopener">Salamander Grand Piano V3</a> by Alexander Holm (CC BY 3.0). Room: image-source reflections plus a Sabine diffuse tail, computed in your browser and applied with a convolution reverb; this is a model of a shoebox room, not a recording of a real hall.
+  </footer>
+</div>
+
+<script>
+const PIECES = {
+  // lossless 16-bit/44.1 kHz FLAC (in an MP4 container, which artifacts can serve) of the dry render; MP3 only if this browser cannot decode FLAC
+  nocturne: { file: 'nocturne_dry_lossless.mp4', fallback: 'nocturne_dry.mp3', onsets: __ONSETS__ },
+  valse:    { file: 'valse_dry_lossless.mp4',   fallback: 'valse_dry.mp3',    onsets: __ONSETS_VALSE__ },
+  // user: { onsets, beats } filled in when you load your own file (see analyseTrack)
+  tango:    { file: 'tango_dry_lossless.mp4',   fallback: 'tango_dry.mp3',    onsets: __ONSETS_TANGO__, beatPitch: 55, beatGap: 0.25 },
+};
+// beats = bass notes spaced apart: in the waltz, beat 1 of each bar; in the tango (2/4), roughly each beat
+for (const p of Object.values(PIECES)) {
+  const bp = p.beatPitch || 52, bg = p.beatGap || 0.4;
+  p.beats = []; for (const [t, , pitch] of p.onsets) if (pitch < bp && (!p.beats.length || t - p.beats[p.beats.length - 1] >= bg)) p.beats.push(t);
+}
+let piece = 'nocturne', ONSETS = PIECES.nocturne.onsets;
+const C = 343;
+const PRESETS = {
+  marble: { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21] },   // RT60 ~4.3 s, as in the Python render
+  hall:   { L: 48, W: 28, H: 18, A: 65, piano: [8, 14],  seat: [24, 14] },   // ~2.0 s
+  salon:  { L: 16, W: 10, H: 5,  A: 53, piano: [4, 5],   seat: [11, 6] },    // ~0.8 s
+};
+const MAXL = 100, MAXW = 50;
+const S = { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21], pz: 1.2, ez: 1.6, ear: 0.09, face: Math.PI };
+// facing angle in plan coordinates (y points down the screen); your left ear is 90° anticlockwise on screen
+const leftVec = th => [Math.sin(th), -Math.cos(th)];
+const facePiano = () => { S.face = Math.atan2(S.piano[1] - S.seat[1], S.piano[0] - S.seat[0]); };
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COL = { brass: css('--brass'), seat: css('--seat'), ink: css('--ink'), ink2: css('--ink-2'), ink3: css('--ink-3'), line: css('--line'), wall: css('--wall'), panel: css('--panel') };
+
+// ---------- acoustics -------------------------------------------------------
+// walls slider 0..100 -> average absorption alpha 0.02 (polished stone) .. 0.6 (curtains, full audience)
+const alphaOf = a => 0.02 + 0.58 * Math.pow(a / 100, 1.3);
+const sliderOf = al => Math.round(100 * Math.pow((al - 0.02) / 0.58, 1 / 1.3));
+// typical room-average absorption (mid frequencies) for a room finished mostly in each material
+const MATERIALS = [['Marble', 0.02], ['Plaster', 0.10], ['Wood', 0.18], ['Seats', 0.30], ['Curtains', 0.55]]
+  .map(([name, al]) => ({ name, al, pos: sliderOf(al) }));
+const materialAt = v => MATERIALS.reduce((b, m) => Math.abs(m.pos - v) < Math.abs(b.pos - v) ? m : b);
+function acoustics() {
+  const { L, W, H } = S, V = L * W * H, Sa = 2 * (L * W + L * H + W * H), a = alphaOf(S.A);
+  const m = 0.0006;                                         // air attenuation, Np/m (mid band)
+  const rt = Math.min(9, 0.161 * V / (Sa * a + 4 * m * V)); // Sabine with air
+  const rc = 0.057 * Math.sqrt(V / rt);                     // critical distance
+  return { V, Sa, a, beta: Math.sqrt(1 - a), rt, rc };
+}
+// 3D image sources of a shoebox; position of image n along one axis
+const imgAxis = (n, s, Lx) => (n % 2 === 0 ? n * Lx + s : (n + 1) * Lx - s);
+function images3D(src, dmax, head, ears) {
+  // cull by distance to the head first (cheap), then measure each ear
+  const out = [], [L, W, H] = [S.L, S.W, S.H], dm2 = (dmax + 1) * (dmax + 1);
+  const N = [Math.ceil(dmax / L) + 1, Math.ceil(dmax / W) + 1, Math.ceil(dmax / H) + 1];
+  for (let i = -N[0]; i <= N[0]; i++) {
+    const x = imgAxis(i, src[0], L), dx = x - head[0];
+    for (let j = -N[1]; j <= N[1]; j++) {
+      const y = imgAxis(j, src[1], W), dy = y - head[1], dxy = dx * dx + dy * dy;
+      if (dxy > dm2) continue;
+      for (let k = -N[2]; k <= N[2]; k++) {
+        const z = imgAxis(k, src[2], H), dz = z - head[2];
+        if (dxy + dz * dz > dm2) continue;
+        const o = Math.abs(i) + Math.abs(j) + Math.abs(k);
+        const d0 = Math.hypot(x - ears[0][0], y - ears[0][1], z - ears[0][2]), d1 = Math.hypot(x - ears[1][0], y - ears[1][1], z - ears[1][2]);
+        out.push({ x, y, z, o, d: [d0, d1] });
+      }
+    }
+  }
+  return out;
+}
+function images2D(maxOrder) {          // in-plane images for drawing the rings
+  const out = [], [L, W] = [S.L, S.W], p = S.piano;
+  for (let i = -maxOrder; i <= maxOrder; i++)
+    for (let j = -maxOrder; j <= maxOrder; j++) {
+      const o = Math.abs(i) + Math.abs(j);
+      if (o > maxOrder) continue;
+      out.push({ x: imgAxis(i, p[0], L), y: imgAxis(j, p[1], W), o });
+    }
+  return out;
+}
+// The room's response is split in two so moving is cheap:
+//  EARLY  direct sound + discrete echoes for the first ~0.2 s. Depends on where you are and which way you face;
+//         rebuilt on every move (a few ms, a short buffer).
+//  TAIL   the diffuse reverb. Depends only on the room; built once per room change. It starts at t = 0 and a
+//         DelayNode slides it to your direct-sound arrival time, so it stays aligned as you move.
+let IRSTATS = null, TAIL = null;
+function buildTail(sr) {
+  const ac = acoustics(), rt = ac.rt, len = Math.min(Math.ceil((rt * 1.15 + 0.3) * sr), 9 * sr);
+  const a = Math.sqrt(13.8 / (sr * rt)) / ac.rc;            // energy matched: direct == reverb at the critical distance
+  const ramp = 0.06 * sr, k = 6.91 / (rt * sr), ch = [new Float32Array(len), new Float32Array(len)];
+  const p = Math.exp(-2 * Math.PI * 2000 / sr), kh = 6.91 / sr * (1 / (0.55 * rt) - 1 / rt);
+  let E = 0;
+  for (const c of ch) {
+    let lp = 0;
+    for (let n = 0; n < len; n++) {
+      const g = n < ramp ? (n / ramp) * (n / ramp) : 1;
+      const v = a * g * Math.exp(-k * n) * (Math.random() + Math.random() - 1) * 1.73;
+      lp = (1 - p) * v + p * lp;                             // highs die faster than lows: extra decay above ~2 kHz
+      c[n] = lp + (v - lp) * Math.exp(-kh * n);
+      E += c[n] * c[n];
+    }
+  }
+  TAIL = { ch, E: E / 2, sr, key: tailKey(sr), ac };
+  return TAIL;
+}
+const tailKey = sr => [S.L, S.W, S.H, S.A, sr].join(',');
+function buildEarly(sr) {
+  if (!TAIL || TAIL.key !== tailKey(sr)) buildTail(sr);
+  const ac = TAIL.ac, rt = ac.rt;
+  const lv = leftVec(S.face), head = [S.seat[0], S.seat[1], S.ez];
+  const ears = [[head[0] + lv[0] * S.ear, head[1] + lv[1] * S.ear, S.ez], [head[0] - lv[0] * S.ear, head[1] - lv[1] * S.ear, S.ez]];
+  const src = [S.piano[0], S.piano[1], S.pz];
+  const dist = Math.hypot(head[0] - src[0], head[1] - src[1], head[2] - src[2]), t0 = dist / C;
+  const dmax = dist + Math.min(0.2, 0.5 * rt) * C;
+  const len = Math.ceil((dmax / C + 0.005) * sr), ch = [new Float32Array(len), new Float32Array(len)];
+  const imgs = images3D(src, dmax, head, ears);
+  let first = Infinity;
+  for (const im of imgs) {
+    const dx = im.x - head[0], dy = im.y - head[1], r = Math.hypot(dx, dy, im.z - head[2]) || 1;
+    const side = (dx * lv[0] + dy * lv[1]) / r;              // head shadow: +1 = straight from the left
+    const amp = Math.pow(ac.beta, im.o) * Math.exp(-0.0006 * r);
+    for (let e = 0; e < 2; e++) {
+      const d = im.d[e], n = Math.round(d / C * sr);
+      if (n < len) ch[e][n] += (e ? 0.6 - 0.4 * side : 0.6 + 0.4 * side) * amp / Math.max(d, 1);
+    }
+    if (im.o > 0) { const ms = im.d[0] / C * 1000; if (ms - t0 * 1000 > 2 && ms < first) first = ms; }
+  }
+  // loudness: normalise early + tail together, so moving changes the balance, not the volume
+  let Ee = 0; for (const c of ch) for (let n = 0; n < len; n++) Ee += c[n] * c[n];
+  const norm = 1 / Math.sqrt(Ee / 2 + TAIL.E);
+  for (const c of ch) for (let n = 0; n < len; n++) c[n] *= norm;
+  // echogram (left ear, 2 ms bins) = early + tail shifted to the direct arrival
+  const bin = Math.round(0.002 * sr), nb = 300, bins = new Float32Array(nb), n0 = Math.round(t0 * sr), tl = TAIL.ch[0];
+  for (let b = 0; b < nb; b++) {
+    let s = 0;
+    for (let n = b * bin; n < (b + 1) * bin; n++) {
+      const v = (n < len ? ch[0][n] : 0) + (n >= n0 && n - n0 < tl.length ? tl[n - n0] * norm : 0);
+      s += v * v;
+    }
+    bins[b] = s;
+  }
+  const ref = bins[Math.floor(t0 / 0.002)] || Math.max(...bins);
+  IRSTATS = { ac, t0, bins, ref, direct: t0 * 1000, first, dist, norm, nImages: imgs.length };
+  return ch;
+}
+// kept for the offline check: early + tail as one stereo response
+function buildIR(sr) {
+  const e = buildEarly(sr), n0 = Math.round(IRSTATS.t0 * sr), len = Math.max(e[0].length, n0 + TAIL.ch[0].length);
+  return [0, 1].map(c => { const o = new Float32Array(len); o.set(e[c]); const t = TAIL.ch[c]; for (let n = 0; n < t.length; n++) o[n0 + n] += t[n] * IRSTATS.norm; return o; });
+}
+
+// ---------- audio -----------------------------------------------------------
+let ctx, buf, srcNode = null, playing = false, offset = 0, startAt = 0;
+let input, dryG, wetBus, convs = [], convG = [], active = 0, anDry, anWet, master;
+let tailConvs = [], tailG = [], tailActive = 0, tailDelay, tailNorm, tailKeyLive = null;
+function setupAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  input = ctx.createGain(); dryG = ctx.createGain(); wetBus = ctx.createGain(); master = ctx.createGain();
+  master.gain.value = 0.9;
+  anDry = ctx.createAnalyser(); anWet = ctx.createAnalyser(); anDry.fftSize = anWet.fftSize = 2048;
+  input.connect(anDry); input.connect(dryG); dryG.connect(master);
+  // early: three short convolvers in rotation
+  for (let i = 0; i < 3; i++) { const c = ctx.createConvolver(); c.normalize = false; const g = ctx.createGain(); g.gain.value = 0; input.connect(c); c.connect(g); g.connect(wetBus); convs.push(c); convG.push(g); }
+  // tail: input -> delay (your direct-sound arrival) -> two long convolvers (crossfaded on room change) -> level
+  tailDelay = ctx.createDelay(1.0); tailNorm = ctx.createGain(); tailNorm.gain.value = 0;
+  input.connect(tailDelay);
+  for (let i = 0; i < 2; i++) { const c = ctx.createConvolver(); c.normalize = false; const g = ctx.createGain(); g.gain.value = 0; c.connect(g); g.connect(tailNorm); tailConvs.push(c); tailG.push(g); }
+  tailNorm.connect(wetBus);
+  wetBus.connect(master); master.connect(anWet); anWet.connect(ctx.destination);
+  applyRoomToggle(); rebuildAudioIR();
+}
+const toBuffer = ch => { const b = ctx.createBuffer(2, ch[0].length, ctx.sampleRate); b.copyToChannel(ch[0], 0); b.copyToChannel(ch[1], 1); return b; };
+let lastBuildMs = 0;
+function rebuildAudioIR() {
+  const sr = ctx ? ctx.sampleRate : 44100, t1 = performance.now();
+  const early = buildEarly(sr);
+  lastBuildMs = performance.now() - t1;
+  if (!ctx) return;
+  const t = ctx.currentTime, tau = waltzOn() ? 0.018 : 0.06;
+  // tail: swap only when the room itself changed; the idle convolver is disconnected so it costs nothing
+  if (tailKeyLive !== TAIL.key) {
+    const next = 1 - tailActive, prev = tailActive;
+    tailConvs[next].buffer = toBuffer(TAIL.ch);
+    try { tailDelay.connect(tailConvs[next]); } catch (e) {}
+    hold(tailG[prev].gain, t); tailG[prev].gain.setTargetAtTime(0, t, 0.08);
+    hold(tailG[next].gain, t); tailG[next].gain.setValueAtTime(0, t); tailG[next].gain.setTargetAtTime(1, t + 0.005, 0.08);
+    if (tailKeyLive !== null) setTimeout(() => { try { tailDelay.disconnect(tailConvs[prev]); } catch (e) {} }, 700);
+    tailActive = next; tailKeyLive = TAIL.key;
+  }
+  hold(tailDelay.delayTime, t); tailDelay.delayTime.setTargetAtTime(Math.min(0.99, IRSTATS.t0), t, tau * 2);
+  hold(tailNorm.gain, t); tailNorm.gain.setTargetAtTime(IRSTATS.norm, t, tau);
+  // early: three short convolvers in rotation; the one being refilled has been silent for two updates
+  const next = (active + 1) % 3;
+  convs[next].buffer = toBuffer(early);
+  for (let i = 0; i < 3; i++) if (i !== next) { hold(convG[i].gain, t); convG[i].gain.setTargetAtTime(0, t, tau); }
+  hold(convG[next].gain, t); convG[next].gain.setValueAtTime(0, t); convG[next].gain.setTargetAtTime(1, t + 0.003, tau);
+  active = next;
+}
+// stop a gain where it is now (no jump back to an older value), then schedule from there
+function hold(p, t) { if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else { const v = p.value; p.cancelScheduledValues(t); p.setValueAtTime(v, t); } }
+function applyRoomToggle() {
+  if (!ctx) return;
+  const on = $('roomOn').checked, t = ctx.currentTime;
+  dryG.gain.setTargetAtTime(on ? 0 : 1, t, 0.05); wetBus.gain.setTargetAtTime(on ? 1 : 0, t, 0.05);
+}
+const now = () => playing ? ctx.currentTime - startAt + offset : offset;
+function play() {
+  if (!buf) return;
+  ctx.resume();
+  srcNode = ctx.createBufferSource(); srcNode.buffer = buf; srcNode.connect(input);
+  startAt = ctx.currentTime; srcNode.start(0, offset); playing = true;
+  srcNode.onended = () => { if (playing && now() >= buf.duration - 0.05) { playing = false; offset = 0; $('play').textContent = 'Play'; } };
+  lastOnsetT = offset; onsetIdx = ONSETS.findIndex(o => o[0] >= offset); if (onsetIdx < 0) onsetIdx = ONSETS.length;
+  $('play').textContent = 'Pause';
+}
+function pause() { if (!playing) return; offset = now(); playing = false; srcNode.onended = null; srcNode.stop(); $('play').textContent = 'Play'; }
+function seek(t) { const was = playing; if (was) pause(); offset = Math.max(0, Math.min(buf.duration - 0.1, t)); events.length = 0; if (was) play(); else drawProgress(); }
+function clapSound() {
+  const n = Math.round(0.012 * ctx.sampleRate), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (0.0025 * ctx.sampleRate)) * 0.9;
+  const s = ctx.createBufferSource(); s.buffer = b; s.connect(input); s.start();
+}
+
+// ---------- wavefront events -----------------------------------------------
+const events = []; let onsetIdx = 0, lastOnsetT = 0, clapEvent = null;
+function emit(kind, amp, rate, pitch) { events.push({ kind, amp, rate, born: performance.now(), pitch: pitch || 60 }); if (events.length > 40) events.shift(); }
+
+// ---------- canvases ---------------------------------------------------------
+const plan = $('plan'), echo = $('echo'), trace = $('trace');
+function fit(cv, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = Math.round(w * aspect);
+  cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w, h };
+}
+let P, E, T;
+function layout() { P = fit(plan, 0.56); E = fit(echo, 0.45); T = fit(trace, 0.36); P.scale = Math.min((P.w - 40) / MAXL, (P.h - 46) / MAXW); }
+const toPx = (x, y) => [20 + x * P.scale, 14 + y * P.scale];
+const toM = (px, py) => [(px - 20) / P.scale, (py - 14) / P.scale];
+
+function drawPlan(tms) {
+  const { g, w, h } = P, s = P.scale, [L, W] = [S.L, S.W];
+  g.clearRect(0, 0, w, h);
+  // 10 m grid across the maximum footprint
+  g.strokeStyle = 'rgba(255,255,255,0.035)'; g.lineWidth = 1;
+  for (let x = 0; x <= MAXL; x += 10) { const [px] = toPx(x, 0); g.beginPath(); g.moveTo(px, 14); g.lineTo(px, 14 + MAXW * s); g.stroke(); }
+  for (let y = 0; y <= MAXW; y += 10) { const [, py] = toPx(0, y); g.beginPath(); g.moveTo(20, py); g.lineTo(20 + MAXL * s, py); g.stroke(); }
+  // room glow follows the level at your seat
+  const [rx, ry] = toPx(0, 0), rw = L * s, rh = W * s;
+  g.fillStyle = `rgba(106,174,232,${0.03 + 0.22 * glow})`; g.fillRect(rx, ry, rw, rh);
+  // reflection paths (first order, 4 walls)
+  const p = S.piano, q = S.seat;
+  if ($('paths').checked) {
+    g.setLineDash([3, 4]); g.lineWidth = 1;
+    for (const [ax, plane] of [[0, 0], [0, L], [1, 0], [1, W]]) {
+      const im = [...p]; im[ax] = 2 * plane - p[ax];
+      const t = (plane - im[ax]) / (q[ax] - im[ax]); const hit = [im[0] + t * (q[0] - im[0]), im[1] + t * (q[1] - im[1])];
+      g.strokeStyle = 'rgba(226,180,92,0.35)'; g.beginPath(); g.moveTo(...toPx(...p)); g.lineTo(...toPx(...hit)); g.lineTo(...toPx(...q)); g.stroke();
+    }
+    g.setLineDash([]);
+  }
+  g.strokeStyle = 'rgba(226,180,92,0.6)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(...toPx(...p)); g.lineTo(...toPx(...q)); g.stroke();
+  // wavefronts, clipped to the room
+  g.save(); g.beginPath(); g.rect(rx, ry, rw, rh); g.clip();
+  const beta = IRSTATS ? IRSTATS.ac.beta : 0.95, nowp = performance.now();
+  let hitSeat = 0;
+  for (const ev of events) {
+    const age = (nowp - ev.born) / 1000 * ev.rate;          // physical seconds
+    const r = age * C, life = ev.kind === 'clap' ? 0.6 : 0.42;
+    if (age > life) { ev.dead = true; continue; }
+    const fade = 1 - age / life;
+    const imgs = ev.kind === 'clap' ? IMG2D_CLAP : IMG2D;
+    for (const im of imgs) {
+      const amp = ev.amp * Math.pow(beta, im.o) * fade;
+      if (amp < 0.02) continue;
+      const [cx, cy] = toPx(im.x, im.y);
+      g.strokeStyle = `rgba(226,180,92,${Math.min(0.95, amp * (im.o ? 0.75 : 1))})`;
+      g.lineWidth = ev.kind === 'clap' ? (im.o ? 1.4 : 2.4) : (im.o ? 1 : 1.8) * (ev.pitch < 48 ? 1.5 : 1);
+      g.beginPath(); g.arc(cx, cy, r * s, 0, Math.PI * 2); g.stroke();
+      const dq = Math.hypot(im.x - q[0], im.y - q[1]);
+      hitSeat += amp * Math.exp(-Math.abs(dq - r) / 1.5);
+    }
+  }
+  g.restore();
+  for (let i = events.length - 1; i >= 0; i--) if (events[i].dead) events.splice(i, 1);
+  // walls
+  g.strokeStyle = COL.wall; g.lineWidth = 2.5; g.strokeRect(rx, ry, rw, rh);
+  g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textBaseline = 'top';
+  g.fillText(`${L} × ${W} × ${S.H} m`, rx + 6, ry + rh + 6);
+  // scale bar
+  const sb = 10 * s, [bx, by] = [w - 20 - sb, h - 14];
+  g.strokeStyle = COL.ink3; g.lineWidth = 1.5; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + sb, by); g.moveTo(bx, by - 4); g.lineTo(bx, by + 1); g.moveTo(bx + sb, by - 4); g.lineTo(bx + sb, by + 1); g.stroke();
+  g.textBaseline = 'bottom'; g.textAlign = 'center'; g.fillText('10 m', bx + sb / 2, by - 4); g.textAlign = 'left';
+  // piano: a grand seen from above
+  const [px, py] = toPx(...p), k = Math.max(0.6, s / 9);
+  g.save(); g.translate(px, py); g.fillStyle = COL.brass;
+  g.beginPath(); g.moveTo(-7 * k, -6 * k); g.lineTo(-7 * k, 6 * k); g.lineTo(4 * k, 6 * k);
+  g.bezierCurveTo(14 * k, 6 * k, 14 * k, -1 * k, 9 * k, -3 * k); g.lineTo(0, -6 * k); g.closePath(); g.fill(); g.restore();
+  // waltz trail
+  if (waltzOn() && trail.length > 1) {
+    g.strokeStyle = 'rgba(106,174,232,0.28)'; g.lineWidth = 1.5; g.beginPath();
+    trail.forEach((pt, i) => { const [x, y] = toPx(...pt); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+  }
+  // seat: head with two ears and a nose for facing; flashes when a wavefront passes
+  const [sx, sy] = toPx(...q), fl = Math.min(1, hitSeat), f = [Math.cos(S.face), Math.sin(S.face)], lv = leftVec(S.face);
+  seatFlash = Math.max(seatFlash * 0.85, fl);
+  g.fillStyle = `rgba(106,174,232,${0.18 + 0.5 * seatFlash})`; g.beginPath(); g.arc(sx, sy, 9 + 9 * seatFlash, 0, 7); g.fill();
+  if (waltzOn()) {   // partner, held at arm's length in front of you
+    const [ax, ay] = [sx + f[0] * 14, sy + f[1] * 14];
+    g.strokeStyle = COL.ink2; g.lineWidth = 1.5; g.beginPath(); g.arc(ax, ay, 5, 0, 7); g.stroke();
+  }
+  g.fillStyle = COL.seat; g.beginPath(); g.moveTo(sx + f[0] * 10, sy + f[1] * 10); g.lineTo(sx - lv[0] * 4 + f[0] * 4, sy - lv[1] * 4 + f[1] * 4); g.lineTo(sx + lv[0] * 4 + f[0] * 4, sy + lv[1] * 4 + f[1] * 4); g.fill();
+  g.beginPath(); g.arc(sx, sy, 6, 0, 7); g.fill();
+  g.font = '700 8px "Instrument Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = COL.ink; g.beginPath(); g.arc(sx + lv[0] * 6, sy + lv[1] * 6, 2.6, 0, 7); g.arc(sx - lv[0] * 6, sy - lv[1] * 6, 2.6, 0, 7); g.fill();
+  g.fillStyle = COL.panel; g.fillText('L', sx + lv[0] * 6, sy + lv[1] * 6 + 0.5); g.fillText('R', sx - lv[0] * 6, sy - lv[1] * 6 + 0.5); g.textAlign = 'left';
+  g.font = '600 12px "Instrument Sans", sans-serif'; g.textBaseline = 'middle';
+  g.fillStyle = COL.brass; g.fillText('piano', px + 15 * k, py - 10);
+  g.fillStyle = COL.seat; g.fillText('you', sx + 14, sy - 10);
+  if (dance() === 'tango' && TG.name) {
+    g.font = '500 13px "JetBrains Mono", monospace'; g.fillStyle = COL.seat; g.textBaseline = 'top'; g.textAlign = 'left';
+    g.fillText(TG.name, 24, 18);
+  }
+  // clap clock
+  if (clapEvent && !clapEvent.dead) {
+    const ms = (nowp - clapEvent.born) * clapEvent.rate;
+    g.font = '500 13px "JetBrains Mono", monospace'; g.fillStyle = COL.ink; g.textBaseline = 'top'; g.textAlign = 'right';
+    g.fillText(`clap + ${ms.toFixed(0).padStart(3, ' ')} ms` + (clapEvent.rate < 1 ? `  (${Math.round(1 / clapEvent.rate)}× slower)` : ''), w - 20, 18);
+    g.textAlign = 'left';
+  }
+}
+let seatFlash = 0, glow = 0;
+
+function drawEcho() {
+  const { g, w, h } = E; g.clearRect(0, 0, w, h);
+  if (!IRSTATS) return;
+  const padL = 34, padB = 20, pw = w - padL - 8, ph = h - padB - 8, ms2x = ms => padL + ms / 600 * pw, db2y = db => 8 + (-db / 60) * ph;
+  g.font = '10.5px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.strokeStyle = 'rgba(255,255,255,0.05)';
+  for (const db of [0, -20, -40, -60]) { const y = db2y(db); g.beginPath(); g.moveTo(padL, y); g.lineTo(w - 8, y); g.stroke(); g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(db, padL - 6, y); }
+  for (const ms of [0, 100, 200, 300, 400, 500, 600]) { g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(ms, ms2x(ms), h - padB + 5); }
+  const { bins, ref, direct, first } = IRSTATS, bw = Math.max(1, pw / 300 - 0.6);
+  for (let b = 0; b < 300; b++) {
+    const db = 10 * Math.log10(bins[b] / ref + 1e-12); if (db < -60) continue;
+    const ms = b * 2, x = ms2x(ms), y = db2y(Math.min(0, db));
+    const isDirect = Math.abs(ms - direct) < 2;
+    g.fillStyle = isDirect ? COL.brass : (clapMs != null && ms <= clapMs ? COL.seat : 'rgba(106,174,232,0.45)');
+    g.beginPath(); g.roundRect ? g.roundRect(x, y, bw, h - padB - y, [2, 2, 0, 0]) : g.rect(x, y, bw, h - padB - y); g.fill();
+  }
+  g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillStyle = COL.ink2; g.font = '11px "Instrument Sans", sans-serif';
+  g.fillText('direct', ms2x(direct) + 4, db2y(0) + 12);
+  if (isFinite(first)) { g.strokeStyle = 'rgba(233,230,223,0.35)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(ms2x(first), 8); g.lineTo(ms2x(first), h - padB); g.stroke(); g.setLineDash([]); g.fillText('first echo', ms2x(first) + 4, 22); }
+  if (clapMs != null && clapMs <= 600) { g.strokeStyle = COL.ink; g.lineWidth = 1.5; g.beginPath(); g.moveTo(ms2x(clapMs), 8); g.lineTo(ms2x(clapMs), h - padB); g.stroke(); g.lineWidth = 1; }
+}
+let clapMs = null;
+
+const TR = 480, trDry = new Float32Array(TR).fill(-90), trWet = new Float32Array(TR).fill(-90); let trI = 0;
+const tmp = new Float32Array(2048);
+function rmsDb(an) { an.getFloatTimeDomainData(tmp); let s = 0; for (let i = 0; i < tmp.length; i++) s += tmp[i] * tmp[i]; return 10 * Math.log10(s / tmp.length + 1e-12); }
+let lastTrace = 0;
+function sampleLevels(t) {
+  if (!ctx) return;
+  if (t - lastTrace < 1000 / 60) return; lastTrace = t;
+  const d = rmsDb(anDry), wv = rmsDb(anWet);
+  trDry[trI] = d; trWet[trI] = wv; trI = (trI + 1) % TR;
+  glow = glow * 0.9 + 0.1 * Math.max(0, Math.min(1, (wv + 50) / 35));
+}
+function drawTrace() {
+  const { g, w, h } = T; g.clearRect(0, 0, w, h);
+  const padL = 34, padB = 18, pw = w - padL - 8, ph = h - padB - 6, y = db => 6 + Math.max(0, Math.min(1, -(db + 6) / 54)) * ph;
+  g.font = '10.5px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.strokeStyle = 'rgba(255,255,255,0.05)';
+  for (const db of [-6, -24, -42, -60]) { g.beginPath(); g.moveTo(padL, y(db)); g.lineTo(w - 8, y(db)); g.stroke(); g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(db, padL - 6, y(db)); }
+  g.textAlign = 'center'; g.textBaseline = 'top'; for (const s of [-8, -6, -4, -2, 0]) g.fillText(s ? s + ' s' : 'now', padL + (1 + s / 8) * pw, h - padB + 4);
+  for (const [arr, col] of [[trDry, COL.brass], [trWet, COL.seat]]) {
+    g.strokeStyle = col; g.lineWidth = 2; g.lineJoin = 'round'; g.beginPath();
+    for (let i = 0; i < TR; i++) { const v = arr[(trI + i) % TR], x = padL + i / (TR - 1) * pw; i ? g.lineTo(x, y(v)) : g.moveTo(x, y(v)); }
+    g.stroke();
+  }
+}
+
+// ---------- UI wiring --------------------------------------------------------
+let IMG2D = [], IMG2D_CLAP = [];
+function refreshGeometry(rebuild = true) {
+  for (const k of ['L', 'W', 'H', 'A']) $(k).value = S[k];
+  $('Lo').textContent = S.L + ' m'; $('Wo').textContent = S.W + ' m'; $('Ho').textContent = S.H + ' m';
+  const a = alphaOf(S.A), mat = materialAt(S.A);
+  const i = MATERIALS.findIndex(m => m.pos > S.A), between = i > 0 && Math.abs(mat.pos - S.A) > 4;
+  $('Ao').textContent = (between ? MATERIALS[i - 1].name + '–' + MATERIALS[i].name : mat.name) + ' · α ' + a.toFixed(2);
+  for (const b of $('Aticks').children) b.classList.toggle('on', b.dataset.name === mat.name);
+  for (const pt of [S.piano, S.seat]) { pt[0] = Math.max(0.6, Math.min(S.L - 0.6, pt[0])); pt[1] = Math.max(0.8, Math.min(S.W - 0.8, pt[1])); }
+  if (!waltzOn()) facePiano();
+  IMG2D = images2D(3); IMG2D_CLAP = images2D(6);
+  if (rebuild) scheduleIR();
+}
+let irTimer = null;
+function scheduleIR() { clearTimeout(irTimer); irTimer = setTimeout(() => { rebuildAudioIR(); showStats(); }, 120); }
+function showStats() {
+  const st = IRSTATS; if (!st) return;
+  $('rt').textContent = st.ac.rt.toFixed(2); $('dist').textContent = st.dist.toFixed(1);
+  $('delay').textContent = Math.round(st.direct); $('itdg').textContent = isFinite(st.first) ? Math.round(st.first - st.direct) : '–';
+  $('rc').textContent = st.ac.rc.toFixed(1);
+  const dr = 20 * Math.log10(st.ac.rc / st.dist); $('dr').innerHTML = (dr > 0 ? '+' : '') + dr.toFixed(1);
+}
+function applyPreset(name) {
+  const p = PRESETS[name]; Object.assign(S, { L: p.L, W: p.W, H: p.H, A: p.A, piano: [...p.piano], seat: [...p.seat] });
+  refreshGeometry();
+}
+for (const m of MATERIALS) {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = m.name; b.dataset.name = m.name;
+  b.style.left = m.pos + '%'; b.title = `${m.name}: average absorption α ${m.al.toFixed(2)}`;
+  b.addEventListener('click', () => { S.A = m.pos; document.querySelectorAll('input[name=preset]').forEach(r => r.checked = false); refreshGeometry(); });
+  $('Aticks').append(b);
+}
+for (const k of ['L', 'W', 'H', 'A']) $(k).addEventListener('input', e => { S[k] = +e.target.value; document.querySelectorAll('input[name=preset]').forEach(r => r.checked = false); refreshGeometry(); });
+document.querySelectorAll('input[name=preset]').forEach(r => r.addEventListener('change', e => applyPreset(e.target.value)));
+$('roomOn').addEventListener('change', applyRoomToggle);
+$('play').addEventListener('click', () => { if (!ctx) return; playing ? pause() : play(); });
+$('clap').addEventListener('click', () => {
+  if (!ctx) setupAudio(); ctx.resume(); clapSound();
+  const rate = +document.querySelector('input[name=speed]:checked').value;
+  emit('clap', 1, rate); clapEvent = events[events.length - 1];
+});
+$('seek').addEventListener('click', e => { if (!buf) return; const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left) / r.width * buf.duration); });
+
+let drag = null;
+plan.addEventListener('pointerdown', e => {
+  const r = plan.getBoundingClientRect(), m = toM(e.clientX - r.left, e.clientY - r.top);
+  const dp = Math.hypot(m[0] - S.piano[0], m[1] - S.piano[1]), ds = Math.hypot(m[0] - S.seat[0], m[1] - S.seat[1]), tol = 14 / P.scale + 1;
+  drag = (dp < ds || waltzOn()) ? (dp < tol ? 'piano' : null) : (ds < tol ? 'seat' : null);
+  if (drag) { plan.setPointerCapture(e.pointerId); plan.classList.add('dragging'); }
+});
+plan.addEventListener('pointermove', e => {
+  if (!drag) return; const r = plan.getBoundingClientRect(), m = toM(e.clientX - r.left, e.clientY - r.top);
+  S[drag][0] = m[0]; S[drag][1] = m[1]; refreshGeometry();
+});
+const endDrag = () => { drag = null; plan.classList.remove('dragging'); };
+plan.addEventListener('pointerup', endDrag); plan.addEventListener('pointercancel', endDrag);
+
+const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+function drawProgress() { if (!buf) return; const t = now(); $('tcur').textContent = fmt(t); $('tbar').style.width = (100 * t / buf.duration) + '%'; }
+
+// ---------- waltz ------------------------------------------------------------
+// Half a turn per bar, timed to the pianist's own bass notes (so it follows the rubato);
+// one lap of the room's "line of dance" every 24 turns. Idle (no music): 30 turns a minute.
+const dance = () => document.querySelector('input[name=dance]:checked').value;
+const waltzOn = () => dance() !== 'off';          // 'dancing' (waltz or tango)
+let wTurn = 0, lastBeatPos = null, lastWaltzTs = null, lastIRTs = 0; const trail = [];
+function beatPos(t) {
+  const b = PIECES[piece].beats; if (!b.length || t < b[0]) return null;
+  let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
+  const gap = lo + 1 < b.length ? b[lo + 1] - b[lo] : 0.8;
+  return lo + Math.min(1, (t - b[lo]) / Math.min(gap, 2.5));
+}
+function stepWaltz(ts) {
+  const dt = lastWaltzTs == null ? 0 : Math.min(0.1, (ts - lastWaltzTs) / 1000); lastWaltzTs = ts;
+  const bp = playing ? beatPos(now()) : null;
+  if (bp != null && lastBeatPos != null && bp >= lastBeatPos && bp - lastBeatPos < 3) wTurn += (bp - lastBeatPos) / 2 / (PIECES[piece].waltzEvery || 1);
+  else if (!playing) wTurn += dt * 0.5;
+  lastBeatPos = bp;
+  const rx = S.L / 2 - Math.max(3, 0.14 * S.L), ry = S.W / 2 - Math.max(2.5, 0.18 * S.W), ph = -2 * Math.PI * wTurn / 24;
+  S.seat[0] = S.L / 2 + rx * Math.cos(ph); S.seat[1] = S.W / 2 + ry * Math.sin(ph);
+  S.face = 2 * Math.PI * wTurn;                       // clockwise on screen: a natural turn
+  trail.push([...S.seat]); if (trail.length > 240) trail.shift();
+  if (ts - lastIRTs > 50) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
+}
+// ---------- tango ------------------------------------------------------------
+// One move per beat (bass note), staccato: the move happens early in the beat, then you hold still.
+// Phrase of 8: four walking steps along the line of dance, ocho right, ocho left, a fast giro, a corte
+// that freezes with your head snapped toward the piano. Idle (no music): a beat every 0.8 s.
+const TG = { s: 0, fig: 0, from: null, to: null, k: -1, t0: 0, dur: 0.3 };
+const tangoTrack = sv => {
+  const rx = S.L / 2 - Math.max(3, 0.14 * S.L), ry = S.W / 2 - Math.max(2.5, 0.18 * S.W), ph = -2 * Math.PI * sv;
+  return { x: S.L / 2 + rx * Math.cos(ph), y: S.W / 2 + ry * Math.sin(ph), head: Math.atan2(-ry * Math.cos(ph), rx * Math.sin(ph)), speed: 2 * Math.PI * Math.hypot(rx * Math.sin(ph), ry * Math.cos(ph)) };  // metres per unit of s, here
+};
+const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
+const ease = u => 1 - Math.pow(1 - Math.max(0, Math.min(1, u)), 3);
+function stepTango(ts) {
+  let k, tStart, gap, t;
+  const b = PIECES[piece].beats;
+  if (playing && b.length && now() >= b[0]) {
+    t = now(); let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; }
+    k = lo; tStart = b[lo]; gap = lo + 1 < b.length ? b[lo + 1] - b[lo] : 0.8;
+  } else { t = ts / 1000; k = Math.floor(t / 0.8); tStart = k * 0.8; gap = 0.8; }
+  if (k !== TG.k) {                                   // a new beat: plan the next move from where we are
+    const cur = TG.to ? { s: TG.s, fig: TG.fig } : { s: 0, fig: 0 };
+    const step = 0.75 / tangoTrack(cur.s).speed, m = ((k % 8) + 8) % 8;   // a 0.75 m stride wherever you are on the track
+    let to = { s: cur.s, fig: 0 }, dur = Math.min(0.32, 0.55 * gap), name = 'caminata';
+    if (m <= 3) to = { s: cur.s + step, fig: 0 };
+    else if (m === 4) { to = { s: cur.s + step / 3, fig: 75 * Math.PI / 180 }; name = 'ocho'; }
+    else if (m === 5) { to = { s: cur.s + step / 3, fig: -75 * Math.PI / 180 }; name = 'ocho'; }
+    else if (m === 6) { to = { s: cur.s, fig: cur.fig + 2 * Math.PI }; dur = Math.min(0.7, 0.85 * gap); name = 'giro'; }
+    else {                                            // corte: freeze, head snaps to the piano
+      const here = tangoTrack(cur.s), toPiano = Math.atan2(S.piano[1] - here.y, S.piano[0] - here.x);
+      to = { s: cur.s, fig: cur.fig + wrapPi(toPiano - here.head - cur.fig) }; dur = Math.min(0.12, 0.3 * gap); name = 'corte';
+    }
+    if (m !== 6 && m !== 7) to.fig = cur.fig + wrapPi(to.fig - cur.fig);   // shortest way back from a turn
+    Object.assign(TG, { k, t0: tStart, dur, from: cur, to, name });
+  }
+  const u = ease((t - TG.t0) / TG.dur);
+  TG.s = TG.from.s + (TG.to.s - TG.from.s) * u; TG.fig = TG.from.fig + (TG.to.fig - TG.from.fig) * u;
+  const tr = tangoTrack(TG.s);
+  S.seat[0] = tr.x; S.seat[1] = tr.y; S.face = tr.head + TG.fig;
+  trail.push([...S.seat]); if (trail.length > 240) trail.shift();
+  if (ts - lastIRTs > 40) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
+}
+const HINTS = {
+  off: 'Drag the gold piano or the blue seat. Rings are wall reflections in the plan; floor and ceiling bounces are in the sound and the echogram but not drawn here.',
+  waltz: 'You are waltzing: half a turn per bar on the bass, travelling anticlockwise round the room. L and R mark your ears. Wear headphones and listen to the piano and its echoes swing from ear to ear as you turn.',
+  tango: 'You are dancing tango: one move per beat, sharp and then still. Four walking steps, two ochos (pivots of 75°), a fast giro, then a corte where you freeze facing the piano. Wear headphones: the sound jumps where the waltz glides.',
+};
+document.querySelectorAll('input[name=dance]').forEach(r => r.addEventListener('change', e => {
+  const d = e.target.value;
+  trail.length = 0; lastBeatPos = null; lastWaltzTs = null; TG.k = -1; TG.to = null;
+  $('planHint').textContent = HINTS[d];
+  if (d === 'off') { facePiano(); scheduleIR(); return; }
+  const want = d === 'waltz' ? 'valse' : 'tango';
+  if (piece !== want && piece !== 'user' && !playing) { $(want === 'valse' ? 'pcValse' : 'pcTango').checked = true; switchPiece(want); }
+}));
+
+function frame(ts) {
+  if (dance() === 'waltz') stepWaltz(ts); else if (dance() === 'tango') stepTango(ts);
+  if (playing) {
+    const t = now();
+    while (onsetIdx < ONSETS.length && ONSETS[onsetIdx][0] <= t) {
+      const [ot, v, pitch] = ONSETS[onsetIdx++];
+      if (t - ot < 0.25) { emit('note', 0.25 + 0.75 * (v / 127), 1, pitch); events[events.length - 1].born -= (t - ot) * 1000; }
+    }
+    drawProgress();
+  }
+  clapMs = clapEvent && !clapEvent.dead ? (performance.now() - clapEvent.born) * clapEvent.rate : null;
+  sampleLevels(ts); drawPlan(ts); drawEcho(); drawTrace();
+  requestAnimationFrame(frame);
+}
+
+// ---------- boot -------------------------------------------------------------
+layout(); refreshGeometry(false); buildEarly(44100); showStats();
+new ResizeObserver(() => layout()).observe(document.querySelector('.stage'));
+requestAnimationFrame(frame);
+// audio per piece: fetched once, decoded on first play (decoding needs the AudioContext, which needs a click)
+const RAW = {}, DECODED = {};
+const getBytes = f => fetch(f).then(r => { if (!r.ok) throw new Error(f + ' ' + r.status); return r.arrayBuffer(); });
+async function fetchPiece(name) {
+  if (!RAW[name]) RAW[name] = getBytes(PIECES[name].file);
+  return RAW[name];
+}
+async function ensureBuffer(name) {
+  if (DECODED[name]) return DECODED[name];
+  const btn = $('play'); btn.disabled = true; btn.textContent = 'Loading…';
+  try {
+    const ab = await fetchPiece(name);
+    btn.textContent = 'Decoding…';
+    try { DECODED[name] = await ctx.decodeAudioData(ab.slice(0)); DECODED[name].format = 'FLAC, lossless'; }
+    catch (e) { console.warn('FLAC decode failed, using MP3:', e); DECODED[name] = await ctx.decodeAudioData(await getBytes(PIECES[name].fallback)); DECODED[name].format = 'MP3 112 kbps'; }
+    $('fmt').textContent = DECODED[name].format;
+    return DECODED[name];
+  } finally { btn.disabled = false; btn.textContent = playing ? 'Pause' : 'Play'; }
+}
+async function switchPiece(name) {
+  if (playing) pause();
+  piece = name; ONSETS = PIECES[name].onsets; offset = 0; events.length = 0; lastBeatPos = null;
+  buf = DECODED[name] || null; drawProgress();
+  $('tcur').textContent = '0:00'; $('tbar').style.width = '0%';
+  $('tdur').textContent = buf ? fmt(buf.duration) : '–';
+  if (PIECES[name].file) fetchPiece(name).catch(() => {});
+}
+document.querySelectorAll('input[name=piece]').forEach(r => r.addEventListener('change', e => switchPiece(e.target.value)));
+// ---------- your own track ---------------------------------------------------
+// Beat tracking on the decoded audio: onset strength from 10 ms energy changes (bass weighted),
+// tempo from its autocorrelation (60-180 BPM, preferring ~120), then beats by dynamic programming
+// (Ellis 2007: each beat lands on a strong onset, one beat period after the last).
+function fftMag(re, im) {                       // in-place radix-2 FFT, returns nothing (re/im overwritten)
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+      for (let j = 0; j < len / 2; j++) { const a = i + j, b = a + len / 2, tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+  }
+}
+function analyseTrack(x, sr) {
+  // onset strength = spectral flux: how much new energy appears in each frequency band, 10 ms hops,
+  // log-compressed so quiet notes count; bass bins (< 300 Hz) weighted up, they carry the dance beat
+  const hop = Math.round(sr * 0.01), N = 1024, n = Math.max(1, Math.floor((x.length - N) / hop)), K = N / 2, kLo = Math.round(300 / sr * N);
+  const win = new Float32Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+  const re = new Float32Array(N), im = new Float32Array(N), prev = new Float32Array(K), cur = new Float32Array(K);
+  const nov = new Float32Array(n), lowShare = new Float32Array(n);
+  for (let f = 0; f < n; f++) {
+    const o = f * hop; for (let i = 0; i < N; i++) { re[i] = x[o + i] * win[i]; im[i] = 0; }
+    fftMag(re, im);
+    let lo = 0, hi = 0;
+    for (let k = 1; k < K; k++) { cur[k] = Math.log1p(100 * Math.hypot(re[k], im[k])); const d = cur[k] - prev[k]; if (d > 0 && f) { if (k < kLo) lo += d; else hi += d; } }
+    nov[f] = hi + 1.5 * lo * (K / kLo) * 0.15; lowShare[f] = lo / (lo + hi + 1e-9);
+    prev.set(cur);
+  }
+  // tempo
+  let best = 50, bestS = -1;
+  for (let lag = 33; lag <= 100; lag++) {
+    let s = 0; for (let i = lag; i < n; i++) s += nov[i] * nov[i - lag];
+    const w = Math.exp(-0.5 * Math.pow(Math.log2((6000 / lag) / 120) / 0.9, 2)); if (s * w > bestS) { bestS = s * w; best = lag; }
+  }
+  const P = best, score = new Float32Array(n), back = new Int32Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    let m = 0, mj = -1;
+    for (let j = i - 2 * P; j <= i - Math.round(P / 2); j++) { if (j < 0) continue; const v = score[j] - 100 * Math.pow(Math.log((i - j) / P), 2); if (v > m || mj < 0) { m = v; mj = j; } }
+    score[i] = nov[i] + (mj >= 0 ? Math.max(0, m) : 0); back[i] = m > 0 ? mj : -1;
+  }
+  let i = n - 1; for (let k = n - P; k < n; k++) if (k >= 0 && score[k] > score[i]) i = k;
+  const beats = []; while (i >= 0) { beats.push(i * hop / sr); i = back[i]; } beats.reverse();
+  // onsets for the ripples: local peaks well above the running average, at least 80 ms apart
+  const onsets = [], sorted = Array.from(nov).sort((a, b) => a - b), p95 = sorted[Math.floor(0.95 * n)] || 1;
+  let avg = 0; for (let k = 0; k < Math.min(n, 100); k++) avg += nov[k] / 100;
+  for (let k = 1; k < n - 1; k++) {
+    avg += ((nov[Math.min(n - 1, k + 50)] || 0) - (nov[Math.max(0, k - 50)] || 0)) / 100;
+    if (nov[k] > nov[k - 1] && nov[k] >= nov[k + 1] && nov[k] > 1.5 * avg && nov[k] > 0.25 * p95) {
+      const t = k * hop / sr; if (onsets.length && t - onsets[onsets.length - 1][0] < 0.08) continue;
+      onsets.push([+t.toFixed(3), Math.round(Math.min(127, 40 + 87 * nov[k] / p95)), lowShare[k] > 0.5 ? 40 : 70]);
+    }
+  }
+  return { beats, onsets, bpm: 6000 / P };
+}
+$('loadBtn').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (!ctx) setupAudio();
+  const btn = $('loadBtn'); btn.disabled = true; btn.textContent = 'Reading…';
+  try {
+    const raw = await f.arrayBuffer();
+    btn.textContent = 'Decoding…'; const dec = await ctx.decodeAudioData(raw);
+    // one point source in the room: fold to mono
+    const mono = ctx.createBuffer(1, dec.length, dec.sampleRate), m = mono.getChannelData(0);
+    for (let c = 0; c < dec.numberOfChannels; c++) { const d = dec.getChannelData(c); for (let i = 0; i < d.length; i++) m[i] += d[i] / dec.numberOfChannels; }
+    btn.textContent = 'Finding the beat…'; await new Promise(r => setTimeout(r, 30));
+    const an = analyseTrack(m, mono.sampleRate);
+    PIECES.user = { onsets: an.onsets, beats: an.beats, waltzEvery: 3, bpm: an.bpm };
+    DECODED.user = mono; mono.format = `${f.name} · your file, decoded here, ${Math.round(an.bpm)} BPM, ${an.beats.length} beats`;
+    $('pcUser').disabled = false; $('pcUserLbl').hidden = false; $('pcUserLbl').textContent = f.name.replace(/\.[^.]+$/, '').slice(0, 28);
+    $('pcUser').checked = true; switchPiece('user'); $('fmt').textContent = mono.format;
+  } catch (err) {
+    console.error('Could not read that file:', err);
+    $('fmt').textContent = `Could not decode ${f.name}. Try an MP3, M4A, WAV or FLAC file without copy protection.`;
+  } finally { btn.disabled = false; btn.textContent = 'Load your track…'; e.target.value = ''; }
+});
+
+// replace the simple play handler with one that loads the current piece first
+$('play').replaceWith($('play').cloneNode(true));
+$('play').addEventListener('click', async () => {
+  if (!ctx) setupAudio();
+  if (playing) { pause(); return; }
+  try { buf = await ensureBuffer(piece); $('tdur').textContent = fmt(buf.duration); play(); }
+  catch (err) { $('play').textContent = 'Audio unavailable'; console.error('Could not load the performance audio:', err); }
+});
+fetchPiece('nocturne').then(() => { $('play').textContent = 'Play'; $('play').disabled = false; })
+  .catch(err => { $('play').textContent = 'Audio unavailable'; console.error('Could not load the performance audio:', err); });
+</script>
