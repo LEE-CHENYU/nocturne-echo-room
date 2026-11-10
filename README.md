@@ -14,6 +14,7 @@ Conda env: `chopin_hall` (run Python with `-s`, otherwise user site-packages lea
 | `web/template.html` | **the page's source**: UI, acoustics (image sources + Sabine tail), Web Audio, waltz/tango, track loader |
 | `web/build.py` | `template.html` + `onsets*.json` → `index.html` (`--assets` re-renders audio and onsets from `midi/`) |
 | `web/*_lossless.mp4`, `*.mp3` | dry audio the page loads (FLAC in MP4; MP3 fallback) |
+| `web/skaters_sousa_1912.mp3` | Waldteufel, The Skaters' Waltz, Sousa's Band, 1912; public domain, Library of Congress National Jukebox via archive.org (`loc-jukebox-128290-…`), file unchanged |
 | `midi/` | MAESTRO v3 MIDI (CC BY-NC-SA 4.0) and the Mutopia Nocturne |
 
 Not in git (re-fetch): `soundfonts/SalamanderGrandPiano-V3+20200602.sf2` from
@@ -28,4 +29,5 @@ then publish `web/index.html` to https://claude.ai/artifact/Mm5U22LRLDJBuZTCbCr5
 alongside. Edit `template.html`, never `index.html`.
 
 Published versions: v1 page · v3 early/tail split for speed · v4 waltz · v5 tango + lossless audio ·
-v6 "Load your track" with in-browser beat tracking · v7 material marks on the Walls slider.
+v6 "Load your track" with in-browser beat tracking · v7 material marks on the Walls slider · v11 3D room ·
+v12-14 3D wavefronts (points / wire surface / slice, slow motion) · v15 Skaters' Waltz (1912 recording) replaces the Valse.

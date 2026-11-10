@@ -4,7 +4,7 @@
     python -s web/build.py --assets   # also re-render every piece's audio and onset list from its MIDI first
 
 Source of truth is web/template.html (all UI, acoustics, audio and dance code). index.html is generated:
-the three __ONSETS*__ placeholders are replaced by the note-onset lists the dance modes and the level trace use.
+the __ONSETS*__ placeholders are replaced by the note-onset lists the dance modes and the level trace use.
 Publish index.html with the supporting audio files; the live artifact is
 https://claude.ai/artifact/Mm5U22LRLDJBuZTCbCr5fr
 
@@ -25,7 +25,6 @@ SF2 = ROOT / "soundfonts" / "SalamanderGrandPiano-V3+20200602.sf2"
 # page piece name -> (MIDI from MAESTRO v3, dry wav in out/, onsets json, template placeholder)
 PIECES = {
     "nocturne": ("nocturne_op9n2_maestro2011.midi", "maestro_dry.wav", "onsets.json", "__ONSETS__"),
-    "valse": ("valse_op34n1_maestro2015.midi", "valse_dry.wav", "onsets_valse.json", "__ONSETS_VALSE__"),
     "tango": ("tango_albeniz_godowsky_maestro2009.midi", "tango_dry.wav", "onsets_tango.json", "__ONSETS_TANGO__"),
 }
 
