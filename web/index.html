@@ -165,6 +165,26 @@ footer a { color: var(--ink-2); }
     </div>
     <div class="sep"></div>
     <div class="group">
+      <span class="lbl">Places</span>
+      <div class="seg" role="radiogroup" aria-label="Rooms modelled on real places">
+        <input type="radio" name="preset" id="pPyr" value="pyramid"><label for="pPyr" title="A hollow stone pyramid, 36 m square and 22 m to the apex. Imagined: real pyramids are almost solid. The four leaning faces throw sound back down at the floor.">Pyramid</label>
+        <input type="radio" name="preset" id="pKing" value="kings"><label for="pKing" title="Queen's Chamber, Great Pyramid of Giza: about 5.8 × 5.2 m of fine limestone under a pointed roof of leaning slabs, 6.2 m at the ridge. Small and very hard, so echoes arrive within a few ms and ring for seconds.">Queen's Chamber</label>
+        <input type="radio" name="preset" id="pGal" value="gallery"><label for="pGal" title="Grand Gallery, Great Pyramid: 47 m long, 2.1 m wide, 8.6 m high (drawn level; the real one climbs at 26°). The side walls lean in, from 2.1 m apart at the floor to half that at the top.">Grand Gallery</label>
+        <input type="radio" name="preset" id="pEar" value="ear"><label for="pEar" title="Ear of Dionysius, Syracuse: a limestone cave 65 m deep and 23 m high, open at the mouth, with a pointed, ear-shaped section that is lower and narrower at the back. Drawn straight; the real cave bends in an S.">Ear of Dionysius</label>
+        <input type="radio" name="preset" id="pPlaza" value="plaza"><label for="pPlaza" title="A sunken plaza: 5 m below street level and open to the sky, an oval floor inside an upright stone wall. The piano and your seat start at the oval's two focus points, where the wall's echoes all meet; nothing returns from above.">Sunken plaza</label>
+        <input type="radio" name="preset" id="pCist" value="cistern"><label for="pCist" title="An empty round water cistern, 50 m across under a 4.5 m ceiling, bare concrete (the real ones have columns; this has none). The longest reverberation here.">Cistern</label>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <span class="lbl">Cathedrals</span>
+      <div class="seg" role="radiogroup" aria-label="Cathedrals">
+        <input type="radio" name="preset" id="pND" value="notredame"><label for="pND" title="Notre-Dame de Paris: about 128 m long inside, 33 m to the vault. Drawn as one pointed envelope with a rounded apse; the real building has columns, a transept and chapels.">Notre-Dame</label>
+        <input type="radio" name="preset" id="pKoln" value="cologne"><label for="pKoln" title="Cologne Cathedral: about 144 m long inside, 43.5 m to the vault, one of the tallest Gothic naves. Drawn as one pointed envelope with a rounded apse.">Cologne Cathedral</label>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
       <span class="lbl">Clap replay</span>
       <div class="seg" role="radiogroup" aria-label="Clap replay speed">
         <input type="radio" name="speed" id="s1" value="1"><label for="s1">1×</label>
@@ -193,9 +213,9 @@ footer a { color: var(--ink-2); }
       </div>
     </div>
     <div class="slider" style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:10px 22px;min-width:0">
-      <div class="slider"><span class="lbl">Length</span><input id="L" type="range" min="12" max="100" step="1"><output id="Lo"></output></div>
-      <div class="slider"><span class="lbl">Width</span><input id="W" type="range" min="8" max="50" step="1"><output id="Wo"></output></div>
-      <div class="slider"><span class="lbl">Height</span><input id="H" type="range" min="4" max="35" step="0.5"><output id="Ho"></output></div>
+      <div class="slider"><span class="lbl">Length</span><input id="L" type="range" min="5" max="150" step="0.5"><output id="Lo"></output></div>
+      <div class="slider"><span class="lbl">Width</span><input id="W" type="range" min="2" max="50" step="0.5"><output id="Wo"></output></div>
+      <div class="slider"><span class="lbl">Height</span><input id="H" type="range" min="4" max="45" step="0.5"><output id="Ho"></output></div>
       <div class="slider walls"><span class="lbl">Walls</span><div class="track"><input id="A" type="range" min="0" max="100" step="1" aria-label="Wall absorption, hard marble to heavy curtains"><div class="ticks" id="Aticks"></div></div><output id="Ao"></output></div>
     </div>
   </div>
@@ -262,14 +282,53 @@ for (const p of Object.values(PIECES)) {
 let piece = 'nocturne', ONSETS = PIECES.nocturne.onsets;
 const C = 343;
 const PRESETS = {
-  marble: { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21] },   // RT60 ~4.3 s, as in the Python render
-  hall:   { L: 48, W: 28, H: 18, A: 65, piano: [8, 14],  seat: [24, 14] },   // ~2.0 s
-  salon:  { L: 16, W: 10, H: 5,  A: 53, piano: [4, 5],   seat: [11, 6] },    // ~0.8 s
-  // abandoned showroom: seats gone, bare floor, dust; the stage is where the piano was
-  showroom: { L: 42, W: 30, H: 13, A: 45, piano: [3, 15], seat: [24, 15] },
+  marble: { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21] },   // the one plain box. RT60 ~4.3 s, as in the Python render
+  // Every other room is a solid built from curves (see SHAPES): shape = its name there
+  hall:     { L: 48,  W: 30,  H: 18,  A: 65, piano: [8, 15],     seat: [26, 15],   shape: 'hall' },
+  salon:    { L: 16,  W: 11,  H: 6,   A: 53, piano: [4.5, 5.5],  seat: [11, 6],    shape: 'salon' },
+  showroom: { L: 42,  W: 30,  H: 13,  A: 45, piano: [3, 15],     seat: [24, 15],   shape: 'showroom' },
+  pyramid:  { L: 36,  W: 36,  H: 22,  A: 14, piano: [10, 18],    seat: [24, 19],   shape: 'pyramid' },
+  kings:    { L: 5.8, W: 5.2, H: 6.2, A: 4,  piano: [1.7, 2.6],  seat: [4.4, 2.9], shape: 'queens' },
+  gallery:  { L: 47,  W: 2.1, H: 8.6, A: 6,  piano: [4, 1.05],   seat: [30, 1.05], shape: 'gallery' },
+  ear:      { L: 65,  W: 10,  H: 23,  A: 9,  piano: [9, 5],      seat: [50, 5.5],  shape: 'ear', openName: 'cave mouth' },
+  plaza:    { L: 46,  W: 34,  H: 5,   A: 10, piano: [7.5, 17],   seat: [38.5, 17],  shape: 'plaza', openName: 'open sky', early: 0.3, tail: 0.4 },
+  cistern:  { L: 50,  W: 50,  H: 4.5, A: 2,  piano: [12, 25],    seat: [34, 27],   shape: 'cistern' },
+  notredame:{ L: 128, W: 40,  H: 33,  A: 25, piano: [92, 20],    seat: [46, 21],   shape: 'cathedral' },
+  cologne:  { L: 144, W: 45,  H: 43.5, A: 14, piano: [104, 22.5], seat: [52, 23.5], shape: 'cathedral' },
 };
+// Room shapes. Each returns points on the room's surface, sampled from curves, for a room L long, W wide, H high;
+// the room is the convex solid that wraps them. open(n) picks the faces that are openings, by their outward normal.
+const ringXY = (n, cx, cy, rx, ry, z, a0 = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + 2 * Math.PI * i / n; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a), z]; });
+const SHAPES = {
+  // fan-shaped plan widening from the stage, under a barrel vault
+  hall: { pts: (L, W, H) => [[0, 0.62 * W], [L, W]].flatMap(([x, w]) => [[x, W / 2 - w / 2, 0], [x, W / 2 + w / 2, 0], ...Array.from({ length: 9 }, (_, i) => { const a = Math.PI * i / 8; return [x, W / 2 + w / 2 * Math.cos(a), 0.6 * H + 0.4 * H * Math.sin(a)]; })]) },
+  // oval room under a coved ceiling
+  salon: { pts: (L, W, H) => [...ringXY(10, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(10, L / 2, W / 2, L / 2, W / 2, 0.62 * H), ...ringXY(10, L / 2, W / 2, 0.39 * L, 0.39 * W, 0.88 * H), ...ringXY(10, L / 2, W / 2, 0.2 * L, 0.2 * W, H)] },
+  // shed with cut-off corners and a hipped roof
+  showroom: { pts: (L, W, H) => { const c = 0.16 * Math.min(L, W), o = [[c, 0], [L - c, 0], [L, c], [L, W - c], [L - c, W], [c, W], [0, W - c], [0, c]]; return [...o.map(([x, y]) => [x, y, 0]), ...o.map(([x, y]) => [x, y, 0.68 * H]), [0.3 * L, W / 2, H], [0.7 * L, W / 2, H]]; } },
+  pyramid: { pts: (L, W, H) => [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0], [L / 2, W / 2, H]] },
+  // Queen's Chamber: upright walls, pointed roof of leaning slabs
+  queens: { pts: (L, W, H) => [[0, 0], [L, 0], [L, W], [0, W]].flatMap(([x, y]) => [[x, y, 0], [x, y, 0.75 * H]]).concat([[0, W / 2, H], [L, W / 2, H]]) },
+  // Grand Gallery: corbelled walls closing in toward the top
+  gallery: { pts: (L, W, H) => [0, L].flatMap(x => [[x, 0, 0], [x, W, 0], [x, 0.26 * W, H], [x, 0.74 * W, H]]) },
+  // Ear of Dionysius: a pointed, ear-shaped section, lower and narrower at the back, open at the mouth
+  ear: { pts: (L, W, H) => [[0, 0.62, 0.72], [L, 1, 1]].flatMap(([x, sw, sh]) => Array.from({ length: 8 }, (_, i) => { const u = i / 7, hw = sw * W / 2 * Math.pow(Math.cos(Math.PI / 2 * u), 0.75); return [[x, W / 2 - hw, sh * H * u], [x, W / 2 + hw, sh * H * u]]; }).flat()), open: n => n[0] > 0.95 },
+  // sunken plaza: an oval floor inside an upright stone wall, open to the sky
+  plaza: { pts: (L, W, H) => [...ringXY(18, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(18, L / 2, W / 2, L / 2, W / 2, H)], open: n => n[2] > 0.95 },
+  // Gothic cathedral: aisles at the floor, walls leaning in to the nave, a pointed vault, and a rounded apse at the east end.
+  // One convex envelope: no columns, no transept arms, no side chapels.
+  cathedral: { pts: (L, W, H) => { const prof = [[0, 0.5], [0.3, 0.5], [0.7, 0.19], [0.86, 0.15], [0.95, 0.08]], out = [];
+    for (const [x, sc] of [[0, 1], [0.8 * L, 1], [0.8 * L + 0.2 * L * Math.sin(Math.PI / 6), Math.cos(Math.PI / 6)], [0.8 * L + 0.2 * L * Math.sin(Math.PI / 3), Math.cos(Math.PI / 3)]]) { for (const [u, hw] of prof) out.push([x, W / 2 - hw * W * sc, u * H], [x, W / 2 + hw * W * sc, u * H]); out.push([x, W / 2, H]); }
+    out.push([L, W / 2, 0], [L, W / 2, H]); return out; } },
+  // round concrete water tank
+  cistern: { pts: (L, W, H) => [...ringXY(18, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(18, L / 2, W / 2, L / 2, W / 2, H)] },
+};
+const SOLID = [1, 1, 1, 1, 1, 1];
+// gain of an image source (or a folded wavefront point) in room copy c along one axis: c bounces shared between
+// the wall at 0 and the wall at Lx, each surface counted with its own "how much is there" factor
+const axisGain = (c, r0, rL) => { if (!c || (r0 === 1 && rL === 1)) return 1; const a = Math.abs(c), h0 = c > 0 ? a >> 1 : (a + 1) >> 1, hL = a - h0; return (h0 ? Math.pow(r0, h0) : 1) * (hL ? Math.pow(rL, hL) : 1); };
 const MAXL = 100, MAXW = 50;
-const S = { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21], pz: 1.2, ez: 1.6, ear: 0.09, face: Math.PI };
+const S = { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21], pz: 1.2, ez: 1.6, ear: 0.09, face: Math.PI, refl: SOLID, early: 0.2, tail: 1, openName: '', shape: null };
 // facing angle in plan coordinates (y points down the screen); your left ear is 90° anticlockwise on screen
 const leftVec = th => [Math.sin(th), -Math.cos(th)];
 const facePiano = () => { S.face = Math.atan2(S.piano[1] - S.seat[1], S.piano[0] - S.seat[0]); };
@@ -285,10 +344,102 @@ const sliderOf = al => Math.round(100 * Math.pow((al - 0.02) / 0.58, 1 / 1.3));
 const MATERIALS = [['Marble', 0.02], ['Plaster', 0.10], ['Wood', 0.18], ['Seats', 0.30], ['Curtains', 0.55]]
   .map(([name, al]) => ({ name, al, pos: sliderOf(al) }));
 const materialAt = v => MATERIALS.reduce((b, m) => Math.abs(m.pos - v) < Math.abs(b.pos - v) ? m : b);
+// ---------- the room as a solid ------------------------------------------------
+// ROOM = eight corners (floor 0-3, top 4-7) and six flat faces with outward normals, for boxes and shaped rooms alike.
+let ROOM = null;
+function buildRoom() {
+  const { L, W, H } = S, key = [L, W, H, S.shape].join(','); if (ROOM && ROOM.key === key) return;
+  const sh = S.shape ? SHAPES[S.shape] : null, V = sh ? sh.pts(L, W, H) : [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0], [0, 0, H], [L, 0, H], [L, W, H], [0, W, H]];
+  // faces of the convex solid around the points: every plane through three points that has all the others on one side
+  const N = V.length, eps = 1e-6 * Math.max(L, W, H), faces = [];
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) for (let k = j + 1; k < N; k++) {
+    const a = V[i], b = V[j], c = V[k], ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    let n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx]; const l = Math.hypot(...n); if (l < 1e-9) continue;
+    n = n.map(x => x / l); let d = n[0] * a[0] + n[1] * a[1] + n[2] * a[2], pos = 0, neg = 0;
+    for (let m = 0; m < N && !(pos && neg); m++) { const sd = n[0] * V[m][0] + n[1] * V[m][1] + n[2] * V[m][2] - d; if (sd > eps) pos++; else if (sd < -eps) neg++; }
+    if (pos && neg) continue;
+    if (pos) { n = n.map(x => -x); d = -d; }
+    if (faces.some(f => f.n[0] * n[0] + f.n[1] * n[1] + f.n[2] * n[2] > 1 - 1e-9 && Math.abs(f.d - d) < 20 * eps)) continue;
+    const ix = []; for (let m = 0; m < N; m++) if (Math.abs(n[0] * V[m][0] + n[1] * V[m][1] + n[2] * V[m][2] - d) < 20 * eps) ix.push(m);
+    const cen = [0, 1, 2].map(q => ix.reduce((t, m) => t + V[m][q], 0) / ix.length), e1 = [0, 1, 2].map(q => V[ix[0]][q] - cen[q]), e2 = [n[1] * e1[2] - n[2] * e1[1], n[2] * e1[0] - n[0] * e1[2], n[0] * e1[1] - n[1] * e1[0]];
+    const ang = m => Math.atan2((V[m][0] - cen[0]) * e2[0] + (V[m][1] - cen[1]) * e2[1] + (V[m][2] - cen[2]) * e2[2], (V[m][0] - cen[0]) * e1[0] + (V[m][1] - cen[1]) * e1[1] + (V[m][2] - cen[2]) * e1[2]);
+    ix.sort((p, q) => ang(p) - ang(q));
+    let area = 0; for (let m = 1; m + 1 < ix.length; m++) { const p = V[ix[0]], q = V[ix[m]], r = V[ix[m + 1]]; area += Math.hypot((q[1] - p[1]) * (r[2] - p[2]) - (q[2] - p[2]) * (r[1] - p[1]), (q[2] - p[2]) * (r[0] - p[0]) - (q[0] - p[0]) * (r[2] - p[2]), (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) / 2; }
+    faces.push({ ix, n, d, c: cen, area, floor: n[2] < -0.999 && Math.abs(d) < 1e-6, open: !!(sh && sh.open && sh.open(n)) });
+  }
+  const eset = new Map(); for (const f of faces) f.ix.forEach((a, i) => { const b = f.ix[(i + 1) % f.ix.length]; eset.set(Math.min(a, b) + '_' + Math.max(a, b), [a, b]); });
+  const edges = [...eset.values()], floorV = [...new Set(faces.filter(f => f.floor).flatMap(f => f.ix))], fxs = floorV.map(i => V[i][0]), fys = floorV.map(i => V[i][1]);
+  const z0 = S.pz, cut = []; for (const [a, b] of edges) { const za = V[a][2], zb = V[b][2]; if ((za - z0) * (zb - z0) < 0) { const t = (z0 - za) / (zb - za); cut.push([V[a][0] + t * (V[b][0] - V[a][0]), V[a][1] + t * (V[b][1] - V[a][1])]); } }
+  const mc = [0, 1].map(q => cut.reduce((t, p) => t + p[q], 0) / (cut.length || 1)); cut.sort((p, q) => Math.atan2(p[1] - mc[1], p[0] - mc[0]) - Math.atan2(q[1] - mc[1], q[0] - mc[0]));
+  const op = faces.filter(f => f.open), openC = op.length ? [0, 1, 2].map(q => op.reduce((t, f) => t + f.c[q] * f.area, 0) / op.reduce((t, f) => t + f.area, 0)) : null;
+  const pl = new Float64Array(4 * faces.length); faces.forEach((f, i) => pl.set([f.n[0], f.n[1], f.n[2], f.d], 4 * i));
+  ROOM = { key, V, faces, pl, edges, floorV, sec: cut, openC, vol: faces.reduce((t, f) => t + f.area * f.d, 0) / 3, shaped: !!sh, fx: [Math.min(...fxs), Math.max(...fxs)], fy: [Math.min(...fys), Math.max(...fys)], order: faces.length <= 8 ? 5 : faces.length <= 22 ? 3 : 2 };
+}
+// keep a point inside the room at height z, a margin away from every wall: slide it toward the middle of the floor
+function pullInside(pt, z, m) {
+  const F = ROOM.faces, cx = (ROOM.fx[0] + ROOM.fx[1]) / 2, cy = (ROOM.fy[0] + ROOM.fy[1]) / 2;
+  for (let it = 0; it < 60; it++) {
+    let ok = true; for (let k = 0; k < F.length; k++) { const f = F[k]; if (f.n[0] * pt[0] + f.n[1] * pt[1] + f.n[2] * z - f.d > -m) { ok = false; break; } }
+    if (ok) return; pt[0] += (cx - pt[0]) * 0.06; pt[1] += (cy - pt[1]) * 0.06;
+  }
+}
+// where the dancers circle: an ellipse inside the floor
+function danceEllipse() {
+  const [x0, x1] = ROOM.fx, [y0, y1] = ROOM.fy, l = x1 - x0, w = y1 - y0;
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: Math.max(0.25 * l, l / 2 - Math.max(3, 0.14 * l)), ry: Math.max(0.2 * w, w / 2 - Math.max(2.5, 0.18 * w)) };
+}
+// Image sources of a shaped (convex) room: mirror the source in each wall, then mirror those images again, and keep an
+// image for the listener only if its path really touches each wall inside that wall's outline.
+function imagesShape(src, maxOrder, dmax, head) {
+  const F = ROOM.faces, NF = F.length, out = [{ x: src[0], y: src[1], z: src[2], o: 0, g: 1 }], chain = [src], seq = []; maxOrder = Math.min(maxOrder, ROOM.order);
+  const valid = img => {
+    let tg = head;
+    for (let i = seq.length - 1; i >= 0; i--) {
+      const f = F[seq[i]], a = chain[i + 1], dx = tg[0] - a[0], dy = tg[1] - a[1], dz = tg[2] - a[2], den = f.n[0] * dx + f.n[1] * dy + f.n[2] * dz;
+      if (den > -1e-9) return false;
+      const t = (f.d - (f.n[0] * a[0] + f.n[1] * a[1] + f.n[2] * a[2])) / den; if (t <= 0 || t >= 1) return false;
+      const h = [a[0] + t * dx, a[1] + t * dy, a[2] + t * dz];
+      for (let k = 0; k < NF; k++) { if (k === seq[i]) continue; const g = F[k]; if (g.n[0] * h[0] + g.n[1] * h[1] + g.n[2] * h[2] - g.d > 1e-4) return false; }
+      tg = h;
+    }
+    return true;
+  };
+  // a wall can only mirror an image that lies on its inner side (negative signed distance)
+  const F0 = F; const recIn = (p, last, o) => {
+    for (let k = 0; k < NF; k++) {
+      if (k === last || F0[k].open) continue;
+      const f = F0[k], sd = f.n[0] * p[0] + f.n[1] * p[1] + f.n[2] * p[2] - f.d; if (sd > -1e-6) continue;
+      const q = [p[0] - 2 * sd * f.n[0], p[1] - 2 * sd * f.n[1], p[2] - 2 * sd * f.n[2]];
+      if (dmax && head && Math.hypot(q[0] - head[0], q[1] - head[1], q[2] - head[2]) > dmax + 1) continue;
+      chain.push(q); seq.push(k);
+      if (!head || valid(q)) out.push({ x: q[0], y: q[1], z: q[2], o: o + 1, g: 1 });
+      if (o + 1 < maxOrder) recIn(q, k, o + 1);
+      chain.pop(); seq.pop();
+    }
+  };
+  recIn(src, -1, 0);
+  return out;
+}
+// One point of a wavefront in a shaped room: fly r metres from the source, bouncing off each wall it meets.
+// Returns the number of bounces (-1 if it left through an opening or bounced too often); TSIG names the walls hit.
+let TSIG = 0;
+function tracePt(src, dx, dy, dz, r, q) {
+  const F = ROOM.faces, A = ROOM.pl, NF = F.length; let px = src[0], py = src[1], pz = src[2], rem = r, b = 0; TSIG = 0;
+  for (;;) {
+    let tmin = Infinity, km = -1;
+    for (let k = 0, o = 0; k < NF; k++, o += 4) { const den = A[o] * dx + A[o + 1] * dy + A[o + 2] * dz; if (den > 1e-9) { const t = (A[o + 3] - (A[o] * px + A[o + 1] * py + A[o + 2] * pz)) / den; if (t < tmin) { tmin = t; km = k; } } }
+    if (tmin >= rem) { q[0] = px + dx * rem; q[1] = py + dy * rem; q[2] = pz + dz * rem; return b; }
+    if (tmin < 0) tmin = 0;
+    px += dx * tmin; py += dy * tmin; pz += dz * tmin; rem -= tmin;
+    if (km < 0 || F[km].open || ++b > 6) return -1;
+    const o = 4 * km, dn = 2 * (A[o] * dx + A[o + 1] * dy + A[o + 2] * dz); dx -= dn * A[o]; dy -= dn * A[o + 1]; dz -= dn * A[o + 2]; TSIG = (TSIG * 67 + km + 1) % 1e12;
+  }
+}
 function acoustics() {
-  const { L, W, H } = S, V = L * W * H, Sa = 2 * (L * W + L * H + W * H), a = alphaOf(S.A);
+  buildRoom();
+  const V = ROOM.vol, areas = ROOM.faces.map(f => f.area), Sa = areas.reduce((x, y) => x + y, 0), a = alphaOf(S.A); let Ab = 0; ROOM.faces.forEach(f => { Ab += f.area * (f.open ? 1 : a); });
   const m = 0.0006;                                         // air attenuation, Np/m (mid band)
-  const rt = Math.min(9, 0.161 * V / (Sa * a + 4 * m * V)); // Sabine with air
+  const rt = Math.min(9, 0.161 * V / (Ab + 4 * m * V)); // Sabine with air
   const rc = 0.057 * Math.sqrt(V / rt);                     // critical distance
   return { V, Sa, a, beta: Math.sqrt(1 - a), rt, rc };
 }
@@ -298,17 +449,21 @@ function images3D(src, dmax, head, ears) {
   // cull by distance to the head first (cheap), then measure each ear
   const out = [], [L, W, H] = [S.L, S.W, S.H], dm2 = (dmax + 1) * (dmax + 1);
   const N = [Math.ceil(dmax / L) + 1, Math.ceil(dmax / W) + 1, Math.ceil(dmax / H) + 1];
+  const R = S.refl;
   for (let i = -N[0]; i <= N[0]; i++) {
+    const gi = axisGain(i, R[0], R[1]); if (!gi) continue;
     const x = imgAxis(i, src[0], L), dx = x - head[0];
     for (let j = -N[1]; j <= N[1]; j++) {
+      const gj = gi * axisGain(j, R[2], R[3]); if (!gj) continue;
       const y = imgAxis(j, src[1], W), dy = y - head[1], dxy = dx * dx + dy * dy;
       if (dxy > dm2) continue;
       for (let k = -N[2]; k <= N[2]; k++) {
+        const gk = gj * axisGain(k, R[4], R[5]); if (!gk) continue;
         const z = imgAxis(k, src[2], H), dz = z - head[2];
         if (dxy + dz * dz > dm2) continue;
         const o = Math.abs(i) + Math.abs(j) + Math.abs(k);
         const d0 = Math.hypot(x - ears[0][0], y - ears[0][1], z - ears[0][2]), d1 = Math.hypot(x - ears[1][0], y - ears[1][1], z - ears[1][2]);
-        out.push({ x, y, z, o, d: [d0, d1] });
+        out.push({ x, y, z, o, g: gk, d: [d0, d1] });
       }
     }
   }
@@ -332,7 +487,7 @@ function images2D(maxOrder, p = S.piano) {   // in-plane images for drawing the 
 let IRSTATS = null, TAIL = null;
 function buildTail(sr) {
   const ac = acoustics(), rt = ac.rt, len = Math.min(Math.ceil((rt * 1.15 + 0.3) * sr), 9 * sr);
-  const a = Math.sqrt(13.8 / (sr * rt)) / ac.rc;            // energy matched: direct == reverb at the critical distance
+  const a = S.tail * Math.sqrt(13.8 / (sr * rt)) / ac.rc;            // energy matched: direct == reverb at the critical distance
   const ramp = 0.06 * sr, k = 6.91 / (rt * sr), ch = [new Float32Array(len), new Float32Array(len)];
   const p = Math.exp(-2 * Math.PI * 2000 / sr), kh = 6.91 / sr * (1 / (0.55 * rt) - 1 / rt);
   let E = 0;
@@ -349,7 +504,7 @@ function buildTail(sr) {
   TAIL = { ch, E: E / 2, sr, key: tailKey(sr), ac };
   return TAIL;
 }
-const tailKey = sr => [S.L, S.W, S.H, S.A, sr].join(',');
+const tailKey = sr => [S.L, S.W, S.H, S.A, sr, S.tail, S.refl.join(''), S.shape].join(',');
 function buildEarly(sr) {
   if (!TAIL || TAIL.key !== tailKey(sr)) buildTail(sr);
   const ac = TAIL.ac, rt = ac.rt;
@@ -357,51 +512,58 @@ function buildEarly(sr) {
   const ears = [[head[0] + lv[0] * S.ear, head[1] + lv[1] * S.ear, S.ez], [head[0] - lv[0] * S.ear, head[1] - lv[1] * S.ear, S.ez]];
   const src = [S.piano[0], S.piano[1], S.pz];
   const dist = Math.hypot(head[0] - src[0], head[1] - src[1], head[2] - src[2]), t0 = dist / C;
-  const dmax = dist + Math.min(0.2, 0.5 * rt) * C;
-  const len = Math.ceil((dmax / C + 0.005) * sr), ch = [new Float32Array(len), new Float32Array(len)];
-  const imgs = images3D(src, dmax, head, ears);
+  const dmax = dist + Math.min(S.early, 0.5 * Math.max(rt, S.early)) * C;
+  const n0s = Math.max(0, Math.floor((t0 - 0.001) * sr));   // the convolver response starts 1 ms before the direct sound; a DelayNode supplies the rest
+  const len = Math.ceil((dmax / C + 0.005) * sr) - n0s, ch = [new Float32Array(len), new Float32Array(len)], dir = { d: [0, 0], g: [0, 0] };
+  let imgs;
+  if (ROOM.shaped) { imgs = imagesShape(src, 5, dmax, head); for (const im of imgs) im.d = [Math.hypot(im.x - ears[0][0], im.y - ears[0][1], im.z - ears[0][2]), Math.hypot(im.x - ears[1][0], im.y - ears[1][1], im.z - ears[1][2])]; }
+  else imgs = images3D(src, dmax, head, ears);
   let first = Infinity, nDir = 0;
   for (const im of imgs) {
     const dx = im.x - head[0], dy = im.y - head[1], r = Math.hypot(dx, dy, im.z - head[2]) || 1;
     const side = (dx * lv[0] + dy * lv[1]) / r;              // head shadow: +1 = straight from the left
-    const amp = Math.pow(ac.beta, im.o) * Math.exp(-0.0006 * r);
+    const amp = im.g * Math.pow(ac.beta, im.o) * Math.exp(-0.0006 * r);
     for (let e = 0; e < 2; e++) {
-      const d = im.d[e], n = Math.round(d / C * sr);
-      if (n < len) ch[e][n] += (e ? 0.6 - 0.4 * side : 0.6 + 0.4 * side) * amp / Math.max(d, 1);
+      const d = im.d[e], n = Math.round(d / C * sr) - n0s, v = (e ? 0.6 - 0.4 * side : 0.6 + 0.4 * side) * amp / Math.max(d, 1);
+      if (im.o === 0) { dir.d[e] = d; dir.g[e] = v; }       // the direct sound is played by its own delay + gain, not the convolver
+      else if (n >= 0 && n < len) ch[e][n] += v;
     }
     if (im.o === 0) nDir = Math.round(im.d[0] / C * sr);   // the direct sound's own sample at the left ear
     if (im.o > 0) { const ms = im.d[0] / C * 1000; if (ms - t0 * 1000 > 2 && ms < first) first = ms; }
   }
   // loudness: normalise early + tail together, so moving changes the balance, not the volume
-  let Ee = 0; for (const c of ch) for (let n = 0; n < len; n++) Ee += c[n] * c[n];
+  let Ee = dir.g[0] * dir.g[0] + dir.g[1] * dir.g[1]; for (const c of ch) for (let n = 0; n < len; n++) Ee += c[n] * c[n];
   const norm = 1 / Math.sqrt(Ee / 2 + TAIL.E);
   for (const c of ch) for (let n = 0; n < len; n++) c[n] *= norm;
+  dir.g[0] *= norm; dir.g[1] *= norm;
   // echogram (left ear, 2 ms bins) = early + tail shifted to the direct arrival
   const bin = Math.round(0.002 * sr), nb = 300, bins = new Float32Array(nb), n0 = Math.round(t0 * sr), tl = TAIL.ch[0];
   for (let b = 0; b < nb; b++) {
     let s = 0;
     for (let n = b * bin; n < (b + 1) * bin; n++) {
-      const v = (n < len ? ch[0][n] : 0) + (n >= n0 && n - n0 < tl.length ? tl[n - n0] * norm : 0);
+      const v = (n >= n0s && n - n0s < len ? ch[0][n - n0s] : 0) + (n >= n0 && n - n0 < tl.length ? tl[n - n0] * norm : 0);
       s += v * v;
     }
     bins[b] = s;
   }
   // 0 dB = the bin that holds the left ear's direct sound. (Looking it up by the head-centre arrival time picked
   // the neighbouring bin whenever the ear's arrival fell just across a 2 ms boundary, and the whole plot jumped to 0 dB.)
-  const dirBin = Math.min(nb - 1, Math.floor(nDir / bin)), ref = bins[dirBin] || Math.max(...bins);
-  IRSTATS = { ac, t0, bins, ref, dirBin, direct: t0 * 1000, first, dist, norm, nImages: imgs.length };
+  const dirBin = Math.min(nb - 1, Math.floor(nDir / bin)); bins[dirBin] += dir.g[0] * dir.g[0];
+  const ref = bins[dirBin] || Math.max(...bins);
+  IRSTATS = { ac, t0, bins, ref, dirBin, dir, shift: n0s / sr, earlyLen: len / sr, direct: t0 * 1000, first, dist, norm, nImages: imgs.length };
   return ch;
 }
 // kept for the offline check: early + tail as one stereo response
 function buildIR(sr) {
-  const e = buildEarly(sr), n0 = Math.round(IRSTATS.t0 * sr), len = Math.max(e[0].length, n0 + TAIL.ch[0].length);
-  return [0, 1].map(c => { const o = new Float32Array(len); o.set(e[c]); const t = TAIL.ch[c]; for (let n = 0; n < t.length; n++) o[n0 + n] += t[n] * IRSTATS.norm; return o; });
+  const e = buildEarly(sr), n0 = Math.round(IRSTATS.t0 * sr), ns = Math.round(IRSTATS.shift * sr), len = Math.max(ns + e[0].length, n0 + TAIL.ch[0].length);
+  return [0, 1].map(c => { const o = new Float32Array(len); o.set(e[c], ns); o[Math.round(IRSTATS.dir.d[c] / C * sr)] += IRSTATS.dir.g[c]; const t = TAIL.ch[c]; for (let n = 0; n < t.length; n++) o[n0 + n] += t[n] * IRSTATS.norm; return o; });
 }
 
 // ---------- audio -----------------------------------------------------------
 let ctx, buf, srcNode = null, playing = false, offset = 0, startAt = 0;
 let input, dryG, wetBus, convs = [], convG = [], active = 0, anDry, anWet, master;
 let tailConvs = [], tailG = [], tailActive = 0, tailDelay, tailNorm, tailKeyLive = null;
+let earlyDelay, dirDelay = [], dirGain = [], nextSwap = 0, swapTimer = null; const NCONV = 6;
 let musicGate;
 function setupAudio() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -410,8 +572,14 @@ function setupAudio() {
   master.gain.value = 0.9;
   anDry = ctx.createAnalyser(); anWet = ctx.createAnalyser(); anDry.fftSize = anWet.fftSize = 2048;
   input.connect(anDry); input.connect(dryG); dryG.connect(master);
-  // early: three short convolvers in rotation
-  for (let i = 0; i < 3; i++) { const c = ctx.createConvolver(); c.normalize = false; const g = ctx.createGain(); g.gain.value = 0; input.connect(c); c.connect(g); g.connect(wetBus); convs.push(c); convG.push(g); }
+  // direct sound: one delay + gain per ear, moved smoothly, so turning your head or stepping never swaps anything
+  const merge = ctx.createChannelMerger(2); merge.connect(wetBus);
+  for (let e = 0; e < 2; e++) { const d = ctx.createDelay(1.0), g = ctx.createGain(); g.gain.value = 0; input.connect(d); d.connect(g); g.connect(merge, 0, e); dirDelay.push(d); dirGain.push(g); }
+  // early reflections: short convolvers in rotation, all fed all the time through one delay (your distance to the piano).
+  // A convolver forgets what it has heard when its response is replaced, so a new one runs silently until it has
+  // refilled, and only then is it faded in.
+  earlyDelay = ctx.createDelay(1.0); input.connect(earlyDelay);
+  for (let i = 0; i < NCONV; i++) { const c = ctx.createConvolver(); c.normalize = false; const g = ctx.createGain(); g.gain.value = 0; earlyDelay.connect(c); c.connect(g); g.connect(wetBus); convs.push(c); convG.push(g); }
   // tail: input -> delay (your direct-sound arrival) -> two long convolvers (crossfaded on room change) -> level
   tailDelay = ctx.createDelay(1.0); tailNorm = ctx.createGain(); tailNorm.gain.value = 0;
   input.connect(tailDelay);
@@ -440,11 +608,17 @@ function rebuildAudioIR() {
   }
   hold(tailDelay.delayTime, t); tailDelay.delayTime.setTargetAtTime(Math.min(0.99, IRSTATS.t0), t, tau * 2);
   hold(tailNorm.gain, t); tailNorm.gain.setTargetAtTime(IRSTATS.norm, t, tau);
-  // early: three short convolvers in rotation; the one being refilled has been silent for two updates
-  const next = (active + 1) % 3;
+  // direct sound and the reflections' common delay follow every update
+  const st = IRSTATS;
+  for (let e = 0; e < 2; e++) { dirDelay[e].delayTime.setTargetAtTime(Math.min(0.99, st.dir.d[e] / C), t, 0.012); dirGain[e].gain.setTargetAtTime(st.dir.g[e], t, 0.012); }
+  earlyDelay.delayTime.setTargetAtTime(Math.min(0.99, st.shift), t, tau * 2);
+  // reflections: at most one new response every 100 ms; it warms up for its own length, then crossfades in
+  if (t < nextSwap) { clearTimeout(swapTimer); swapTimer = setTimeout(rebuildAudioIR, (nextSwap - t) * 1000 + 5); return; }
+  nextSwap = t + 0.1;
+  const next = (active + 1) % NCONV, warm = st.earlyLen + 0.01, xf = 0.03;
   convs[next].buffer = toBuffer(early);
-  for (let i = 0; i < 3; i++) if (i !== next) { hold(convG[i].gain, t); convG[i].gain.setTargetAtTime(0, t, tau); }
-  hold(convG[next].gain, t); convG[next].gain.setValueAtTime(0, t); convG[next].gain.setTargetAtTime(1, t + 0.003, tau);
+  convG[next].gain.cancelScheduledValues(t); convG[next].gain.setValueAtTime(0, t); convG[next].gain.setTargetAtTime(1, t + warm, xf);
+  convG[active].gain.setTargetAtTime(0, t + warm, xf);
   active = next;
 }
 // stop a gain where it is now (no jump back to an older value), then schedule from there
@@ -538,24 +712,25 @@ function hull(pts) {                          // convex hull, for clipping the w
 // Points spread evenly over a sphere (Fibonacci spiral): the directions a wavefront's sample points travel in
 const lifeOf = ev => ev.big ? 1.0 : 0.85;   // seconds of sound travel a wavefront stays drawn
 function fibSphere(n) { const o = new Float32Array(3 * n), ga = Math.PI * (3 - Math.sqrt(5)); for (let i = 0; i < n; i++) { const z = 1 - 2 * (i + 0.5) / n, r = Math.sqrt(1 - z * z); o[3 * i] = r * Math.cos(ga * i); o[3 * i + 1] = r * Math.sin(ga * i); o[3 * i + 2] = z; } return o; }
-const DIR_NOTE = fibSphere(420), DIR_CLAP = fibSphere(5000);
+const DIR_NOTE = fibSphere(420), DIR_CLAP = fibSphere(5000), DIR_CLAP_S = fibSphere(1500);   // many-faced rooms trace fewer points per clap
 // The wavefront as a shell of points: each one flies straight at the speed of sound and is folded back into the
 // room at every wall, floor or ceiling it meets (a mirror reflection), losing a little energy per bounce.
 function drawShell(g, ev, src, beta, nowp) {
   const age = (nowp - ev.born) / 1000 * ev.rate, clap = ev.big, life = lifeOf(ev); if (age > life) return;
-  const r = age * C, fade = Math.pow(1 - age / life, 0.6), D = clap ? DIR_CLAP : DIR_NOTE, n = D.length / 3, dim = [S.L, S.W, S.H], V = VIEW;
-  const size = (clap ? 1 : (ev.pitch < 48 ? 1.35 : 1)) * (1 + 0.5 * age / life), a0 = ev.amp * fade * (clap ? 1 : 0.9);
+  const r = age * C, fade = Math.pow(1 - age / life, 0.6), D = clap ? (ROOM.shaped && ROOM.faces.length > 12 ? DIR_CLAP_S : DIR_CLAP) : DIR_NOTE, n = D.length / 3, dim = [S.L, S.W, S.H], V = VIEW;
+  const RF = S.refl, shaped = ROOM.shaped, size = (clap ? 1 : (ev.pitch < 48 ? 1.35 : 1)) * (1 + 0.5 * age / life), a0 = ev.amp * fade * (clap ? 1 : 0.9);
   const TINT = ['246,214,150', '127,227,216', '168,160,255'];   // outgoing gold, first bounce teal, later bounces violet
   const bb = [1, beta, beta * beta, Math.pow(beta, 3), Math.pow(beta, 4), Math.pow(beta, 5), Math.pow(beta, 6)];
   let lastA = -1;
   for (let i = 0; i < n; i++) {
-    let b = 0; const q = [0, 0, 0];
-    for (let k = 0; k < 3; k++) {
+    let b = 0, gs = 1; const q = [0, 0, 0];
+    if (shaped) { b = tracePt(src, D[3 * i], D[3 * i + 1], D[3 * i + 2], r, q); if (b < 0) continue; }
+    else for (let k = 0; k < 3; k++) {
       const u = src[k] + D[3 * i + k] * r, Lx = dim[k], c = Math.floor(u / Lx), m = u - c * Lx;
-      b += Math.abs(c); q[k] = c & 1 ? Lx - m : m;
+      b += Math.abs(c); q[k] = c & 1 ? Lx - m : m; if (c) gs *= axisGain(c, RF[2 * k], RF[2 * k + 1]);
     }
-    if (b > 6) continue;
-    const al = Math.round(Math.min(0.95, a0 * bb[b] * (b ? 1.15 : 1)) * 20) / 20; if (al < 0.05) continue;
+    if (b > 6 || !gs) continue;                    // gs = 0: this part of the front left through an opening
+    const al = Math.round(Math.min(0.95, a0 * gs * bb[b] * (b ? 1.15 : 1)) * 20) / 20; if (al < 0.05) continue;
     const vx = q[0] - V.eye[0], vy = -q[1] - V.eye[1], vz = q[2] - V.eye[2], cz = vx * V.f[0] + vy * V.f[1] + vz * V.f[2]; if (cz < 0.2) continue;
     const sx = V.cx + V.F * (vx * V.r[0] + vy * V.r[1] + vz * V.r[2]) / cz, sy = V.cy - V.F * (vx * V.u[0] + vy * V.u[1] + vz * V.u[2]) / cz;
     const ps = Math.max(1.4, Math.min(4, V.F * 0.22 / cz)) * size;
@@ -581,9 +756,10 @@ function drawMesh(g, ev, src, beta, nowp) {
     let pSig = null, px = 0, py = 0;
     for (let i = 0, n = D.length / 3; i < n; i++) {
       let b = 0, sig = 0; const q = [0, 0, 0];
-      for (let k = 0; k < 3; k++) {
+      if (ROOM.shaped) { b = tracePt(src, D[3 * i], D[3 * i + 1], D[3 * i + 2], r, q); sig = TSIG; if (b < 0) b = 99; }
+      else for (let k = 0; k < 3; k++) {
         const u = src[k] + D[3 * i + k] * r, Lx = dim[k], c = Math.floor(u / Lx), m = u - c * Lx;
-        b += Math.abs(c); sig = sig * 64 + (c + 32); q[k] = c & 1 ? Lx - m : m;
+        b += Math.abs(c); sig = sig * 64 + (c + 32); q[k] = c & 1 ? Lx - m : m; if (c && !axisGain(c, S.refl[2 * k], S.refl[2 * k + 1])) b = 99;
       }
       const vx = q[0] - V.eye[0], vy = -q[1] - V.eye[1], vz = q[2] - V.eye[2], cz = vx * V.f[0] + vy * V.f[1] + vz * V.f[2];
       if (b > 5 || cz < 0.2) { pSig = null; continue; }
@@ -596,10 +772,12 @@ function drawMesh(g, ev, src, beta, nowp) {
   for (let t = 0; t < 3; t++) { const al = Math.min(0.9, a0 * Math.pow(beta, t) * (t ? 1.1 : 1)); if (al < 0.04) continue; g.strokeStyle = `rgba(${TINT[t]},${al})`; g.stroke(paths[t]); }
 }
 function images3Dlist(src, maxOrder) {        // image sources for drawing (not culled by distance)
+  if (ROOM.shaped) return imagesShape(src, Math.min(maxOrder, 3), 0, null);
   const out = [];
   for (let i = -maxOrder; i <= maxOrder; i++) for (let j = -maxOrder; j <= maxOrder; j++) for (let k = -maxOrder; k <= maxOrder; k++) {
     const o = Math.abs(i) + Math.abs(j) + Math.abs(k); if (o > maxOrder) continue;
-    out.push({ x: imgAxis(i, src[0], S.L), y: imgAxis(j, src[1], S.W), z: imgAxis(k, src[2], S.H), o });
+    const gn = axisGain(i, S.refl[0], S.refl[1]) * axisGain(j, S.refl[2], S.refl[3]) * axisGain(k, S.refl[4], S.refl[5]); if (!gn) continue;
+    out.push({ x: imgAxis(i, src[0], S.L), y: imgAxis(j, src[1], S.W), z: imgAxis(k, src[2], S.H), o, g: gn });
   }
   return out;
 }
@@ -610,33 +788,36 @@ function drawPlan(tms) {
   g.clearRect(0, 0, w, h);
   const bg = g.createRadialGradient(VIEW.cx, VIEW.cy, 10, VIEW.cx, VIEW.cy, Math.max(w, h) * 0.8);
   bg.addColorStop(0, '#121824'); bg.addColorStop(1, '#090b10'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
-  const C8 = [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0], [0, 0, H], [L, 0, H], [L, W, H], [0, W, H]].map(c => proj(...c));
+  const C8 = ROOM.V.map(c => proj(...c));
   const fight = dance() === 'fight', V = VIEW, eyeW = [V.eye[0], -V.eye[1], V.eye[2]];
   // far walls (the ones facing away from you) get a faint fill so the box reads as a volume
-  const faces = [[[0, 3, 7, 4], [-1, 0, 0], [0, W / 2, H / 2]], [[1, 2, 6, 5], [1, 0, 0], [L, W / 2, H / 2]], [[0, 1, 5, 4], [0, -1, 0], [L / 2, 0, H / 2]],
-                 [[3, 2, 6, 7], [0, 1, 0], [L / 2, W, H / 2]], [[4, 5, 6, 7], [0, 0, 1], [L / 2, W / 2, H]]];
+  const faces = ROOM.faces.filter(f => !f.floor && !f.open).map(f => [f.ix, f.n, f.c]);
   for (const [ix, n, c] of faces) {
     if ((eyeW[0] - c[0]) * n[0] + (eyeW[1] - c[1]) * n[1] + (eyeW[2] - c[2]) * n[2] > 0) continue;
     if (ix.some(k => !C8[k])) continue;
     g.fillStyle = 'rgba(201,206,216,0.035)'; poly(g, ix.map(k => C8[k]), true); g.fill();
   }
   // floor: glow follows the level at your seat; 5 m grid
-  if (C8.slice(0, 4).every(Boolean)) { g.fillStyle = `rgba(106,174,232,${0.05 + 0.2 * glow})`; poly(g, C8.slice(0, 4), true); g.fill(); }
+  const floors = ROOM.faces.filter(f => f.floor && f.ix.every(k => C8[k]));
+  g.fillStyle = `rgba(106,174,232,${0.05 + 0.2 * glow})`; for (const f of floors) { poly(g, f.ix.map(k => C8[k]), true); g.fill(); }
+  g.save(); g.beginPath(); for (const f of floors) { f.ix.forEach((k, i) => i ? g.lineTo(C8[k][0], C8[k][1]) : g.moveTo(C8[k][0], C8[k][1])); g.closePath(); } g.clip();
   g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1;
-  for (let x = 5; x < L; x += 5) { poly(g, [proj(x, 0, 0), proj(x, W, 0)]); g.stroke(); }
-  for (let y = 5; y < W; y += 5) { poly(g, [proj(0, y, 0), proj(L, y, 0)]); g.stroke(); }
+  const [fx0, fx1] = ROOM.fx, [fy0, fy1] = ROOM.fy;
+  for (let x = Math.ceil((fx0 + 0.01) / 5) * 5; x < fx1; x += 5) { poly(g, [proj(x, fy0, 0), proj(x, fy1, 0)]); g.stroke(); }
+  for (let y = Math.ceil((fy0 + 0.01) / 5) * 5; y < fy1; y += 5) { poly(g, [proj(fx0, y, 0), proj(fx1, y, 0)]); g.stroke(); }
+  g.restore();
   // wavefronts: each echo is a sphere from an image source; drawn where it cuts the plane at the piano's height
   const p = S.piano, q = S.seat, z0 = S.pz, beta = IRSTATS ? IRSTATS.ac.beta : 0.95, nowp = performance.now();
-  const plane = [proj(0, 0, z0), proj(L, 0, z0), proj(L, W, z0), proj(0, W, z0)], shell = hull(C8);
+  const plane = ROOM.sec.map(c => proj(c[0], c[1], z0)), shell = hull(C8);
   let hitSeat = 0; const wmode = document.querySelector('input[name=waves]:checked').value, slice = wmode === 'slice';
-  if (plane.every(Boolean)) {
+  if (plane.length > 2 && plane.every(Boolean)) {
     g.save(); poly(g, plane, true); g.clip();
     for (const ev of events) {
       const age = (nowp - ev.born) / 1000 * ev.rate, r = age * C, life = lifeOf(ev);
       if (age > life) { ev.dead = true; continue; }
       const fade = 1 - age / life, imgs = ev.big ? IMG3_CLAP : IMG3;
       for (const im of imgs) {
-        const amp = ev.amp * Math.pow(beta, im.o) * fade; if (amp < 0.02) continue;
+        const amp = ev.amp * im.g * Math.pow(beta, im.o) * fade; if (amp < 0.02) continue;
         const dz = im.z - z0; if (Math.abs(dz) >= r) continue;
         const rh = Math.sqrt(r * r - dz * dz);
         g.strokeStyle = `rgba(226,180,92,${Math.min(0.95, amp * (im.o ? 0.7 : 1))})`;
@@ -665,9 +846,12 @@ function drawPlan(tms) {
   const head = [q[0], q[1], S.ez], src = [p[0], p[1], z0];
   if ($('paths').checked) {
     g.setLineDash([3, 4]); g.lineWidth = 1;
-    for (const [ax, pl, col] of [[0, 0, '226,180,92'], [0, L, '226,180,92'], [1, 0, '226,180,92'], [1, W, '226,180,92'], [2, 0, '163,168,179'], [2, H, '163,168,179']]) {
-      const im = [...src]; im[ax] = 2 * pl - src[ax];
-      const t = (pl - im[ax]) / (head[ax] - im[ax]), hit = [0, 1, 2].map(k => im[k] + t * (head[k] - im[k]));
+    for (let k = 0; k < ROOM.faces.length; k++) {
+      const f = ROOM.faces[k]; if (f.open) continue;
+      const col = Math.abs(f.n[2]) < 0.7 ? '226,180,92' : '163,168,179', sd = f.n[0] * src[0] + f.n[1] * src[1] + f.n[2] * src[2] - f.d;
+      const im = [src[0] - 2 * sd * f.n[0], src[1] - 2 * sd * f.n[1], src[2] - 2 * sd * f.n[2]], dv = [head[0] - im[0], head[1] - im[1], head[2] - im[2]];
+      const t = (f.d - (f.n[0] * im[0] + f.n[1] * im[1] + f.n[2] * im[2])) / (f.n[0] * dv[0] + f.n[1] * dv[1] + f.n[2] * dv[2]), hit = [0, 1, 2].map(i => im[i] + t * dv[i]);
+      if (!(t > 0 && t < 1) || ROOM.faces.some((o, j) => j !== k && o.n[0] * hit[0] + o.n[1] * hit[1] + o.n[2] * hit[2] - o.d > 1e-4)) continue;   // misses this wall
       g.strokeStyle = `rgba(${col},0.4)`; poly(g, [proj(...src), proj(...hit), proj(...head)]); g.stroke();
       const hp = proj(...hit); if (hp) { g.fillStyle = `rgba(${col},0.7)`; g.beginPath(); g.arc(hp[0], hp[1], 2.5, 0, 7); g.fill(); }
     }
@@ -682,9 +866,13 @@ function drawPlan(tms) {
   if (fight && FG.opp) items.push({ z: proj(FG.opp[0], FG.opp[1], S.ez)?.[2] ?? 0, draw: drawRival3D });
   items.sort((a, b) => b.z - a.z).forEach(it => it.draw());
   // room edges on top, so the box stays crisp
-  g.strokeStyle = 'rgba(201,206,216,0.75)'; g.lineWidth = 1.6;
-  for (const [a, b] of [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]]) { if (C8[a] && C8[b]) { poly(g, [C8[a], C8[b]]); g.stroke(); } }
-  const lab = C8.slice(0, 4).filter(Boolean).sort((a, b) => b[1] - a[1])[0]; if (lab) { g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textBaseline = 'top'; g.textAlign = 'left'; g.fillText(`${L} × ${W} × ${H} m`, lab[0] + 6, lab[1] + 6); }
+  g.strokeStyle = ROOM.shaped ? 'rgba(201,206,216,0.6)' : 'rgba(201,206,216,0.75)'; g.lineWidth = ROOM.shaped ? 1.1 : 1.6;
+  for (const [a, b] of ROOM.edges) { if (C8[a] && C8[b]) { poly(g, [C8[a], C8[b]]); g.stroke(); } }
+  const lab = ROOM.floorV.map(k => C8[k]).filter(Boolean).sort((a, b) => b[1] - a[1])[0]; if (lab) { g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textBaseline = 'top'; g.textAlign = 'left'; g.fillText(`${L} × ${W} × ${H} m`, lab[0] + 6, lab[1] + 6); }
+  if (ROOM.openC && S.openName) {
+    const c = proj(...ROOM.openC);
+    if (c) { g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(S.openName, c[0], c[1]); g.textAlign = 'left'; }
+  }
   // move names and the clap clock sit above your head
   const hp = proj(q[0], q[1], S.ez + 1.2);
   if (hp) {
@@ -827,7 +1015,9 @@ function refreshGeometry(rebuild = true) {
   const i = MATERIALS.findIndex(m => m.pos > S.A), between = i > 0 && Math.abs(mat.pos - S.A) > 4;
   $('Ao').textContent = (between ? MATERIALS[i - 1].name + '–' + MATERIALS[i].name : mat.name) + ' · α ' + a.toFixed(2);
   for (const b of $('Aticks').children) b.classList.toggle('on', b.dataset.name === mat.name);
-  for (const pt of [S.piano, S.seat]) { pt[0] = Math.max(0.6, Math.min(S.L - 0.6, pt[0])); pt[1] = Math.max(0.8, Math.min(S.W - 0.8, pt[1])); }
+  buildRoom();
+  for (const pt of [S.piano, S.seat]) { pt[0] = Math.max(0.6, Math.min(S.L - 0.6, pt[0])); pt[1] = Math.max(Math.min(0.8, S.W / 2), Math.min(S.W - Math.min(0.8, S.W / 2), pt[1])); }
+  if (ROOM.shaped) { pullInside(S.piano, S.pz, 0.5); pullInside(S.seat, S.ez + 0.25, 0.4); }
   if (!waltzOn()) facePiano();
   IMG3 = images3Dlist([S.piano[0], S.piano[1], S.pz], 2); IMG3_CLAP = images3Dlist([S.piano[0], S.piano[1], S.pz], 4);
   if (rebuild) scheduleIR();
@@ -842,7 +1032,7 @@ function showStats() {
   const dr = 20 * Math.log10(st.ac.rc / st.dist); $('dr').innerHTML = (dr > 0 ? '+' : '') + dr.toFixed(1);
 }
 function applyPreset(name) {
-  const p = PRESETS[name]; Object.assign(S, { L: p.L, W: p.W, H: p.H, A: p.A, piano: [...p.piano], seat: [...p.seat] });
+  const p = PRESETS[name]; Object.assign(S, { L: p.L, W: p.W, H: p.H, A: p.A, piano: [...p.piano], seat: [...p.seat], refl: p.refl || SOLID, early: p.early || 0.2, tail: p.tail || 1, openName: p.openName || '', shape: p.shape || null });
   refreshGeometry();
 }
 for (const m of MATERIALS) {
@@ -921,11 +1111,11 @@ function stepWaltz(ts) {
   else if (!playing) want = 0.5;
   wRate += (want - wRate) * (1 - Math.exp(-dt / 0.3)); wTurn += wRate * dt;
   lastBeatPos = bp;
-  const rx = S.L / 2 - Math.max(3, 0.14 * S.L), ry = S.W / 2 - Math.max(2.5, 0.18 * S.W), ph = -2 * Math.PI * wTurn / 24;
-  S.seat[0] = S.L / 2 + rx * Math.cos(ph); S.seat[1] = S.W / 2 + ry * Math.sin(ph);
+  const { cx, cy, rx, ry } = danceEllipse(), ph = -2 * Math.PI * wTurn / 24;
+  S.seat[0] = cx + rx * Math.cos(ph); S.seat[1] = cy + ry * Math.sin(ph); if (ROOM.shaped) pullInside(S.seat, S.ez + 0.25, 0.4);
   S.face = 2 * Math.PI * wTurn;                       // clockwise on screen: a natural turn
   trail.push([...S.seat]); if (trail.length > 240) trail.shift();
-  if (ts - lastIRTs > 50) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
+  if (ts - lastIRTs > 30) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
 }
 // ---------- tango ------------------------------------------------------------
 // One move per beat (bass note), staccato: the move happens early in the beat, then you hold still.
@@ -933,8 +1123,8 @@ function stepWaltz(ts) {
 // that freezes with your head snapped toward the piano. Idle (no music): a beat every 0.8 s.
 const TG = { s: 0, fig: 0, from: null, to: null, k: -1, t0: 0, dur: 0.3 };
 const tangoTrack = sv => {
-  const rx = S.L / 2 - Math.max(3, 0.14 * S.L), ry = S.W / 2 - Math.max(2.5, 0.18 * S.W), ph = -2 * Math.PI * sv;
-  return { x: S.L / 2 + rx * Math.cos(ph), y: S.W / 2 + ry * Math.sin(ph), head: Math.atan2(-ry * Math.cos(ph), rx * Math.sin(ph)), speed: 2 * Math.PI * Math.hypot(rx * Math.sin(ph), ry * Math.cos(ph)) };  // metres per unit of s, here
+  const { cx, cy, rx, ry } = danceEllipse(), ph = -2 * Math.PI * sv;
+  return { x: cx + rx * Math.cos(ph), y: cy + ry * Math.sin(ph), head: Math.atan2(-ry * Math.cos(ph), rx * Math.sin(ph)), speed: 2 * Math.PI * Math.hypot(rx * Math.sin(ph), ry * Math.cos(ph)) };  // metres per unit of s, here
 };
 const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
 const ease = u => 1 - Math.pow(1 - Math.max(0, Math.min(1, u)), 3);
