@@ -45,7 +45,9 @@ button, .seg label {
   font: 500 13px/1 var(--f-body); color: var(--ink); background: #1b2230; border: 1px solid var(--line);
   border-radius: 7px; padding: 9px 12px; cursor: pointer;
 }
-button:hover, .seg label:hover { border-color: #3a4558; }
+button:hover, .seg label:hover, select:hover { border-color: #3a4558; }
+select { font: 500 13px/1 var(--f-body); color: var(--ink); background: #1b2230; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; cursor: pointer; }
+select:focus-visible { outline: 2px solid var(--seat); outline-offset: 2px; }
 button:focus-visible, input:focus-visible + label, input[type=range]:focus-visible { outline: 2px solid var(--seat); outline-offset: 2px; }
 button.primary { background: var(--brass); color: #1a1408; border-color: var(--brass); min-width: 92px; }
 button[disabled] { opacity: .5; cursor: wait; }
@@ -128,7 +130,6 @@ footer a { color: var(--ink-2); }
   <div class="controls" role="group" aria-label="Playback and room controls">
     <div class="group">
       <button id="play" class="primary" disabled>Loading…</button>
-      <button id="clap" title="One handclap. You hear it in real time; the picture shows it slowed down.">Clap</button>
       <label class="check"><input id="roomOn" type="checkbox" checked> Room sound</label>
     </div>
     <div class="sep"></div>
@@ -155,43 +156,32 @@ footer a { color: var(--ink-2); }
     </div>
     <div class="sep"></div>
     <div class="group">
-      <span class="lbl">Room</span>
-      <div class="seg" role="radiogroup" aria-label="Room preset">
-        <input type="radio" name="preset" id="pMarble" value="marble" checked><label for="pMarble">Large space</label>
-        <input type="radio" name="preset" id="pHall" value="hall"><label for="pHall">Concert hall</label>
-        <input type="radio" name="preset" id="pSalon" value="salon"><label for="pSalon">Salon</label>
-        <input type="radio" name="preset" id="pShow" value="showroom"><label for="pShow">Showroom</label>
-      </div>
+      <label class="lbl" for="roomSel">Room</label>
+      <select id="roomSel" aria-label="Room">
+        <optgroup label="Rooms">
+          <option value="marble" selected>Large marble space</option>
+          <option value="hall">Concert hall</option>
+          <option value="salon">Salon</option>
+          <option value="showroom">Showroom</option>
+        </optgroup>
+        <optgroup label="Places">
+          <option value="pantheon" title="Pantheon, Rome: a round drum 43.3 m across under a half-sphere dome, 43.3 m to the open oculus. The dome throws sound back toward the middle of the floor.">Pantheon</option>
+          <option value="pyramid" title="A hollow stone pyramid, 36 m square and 22 m to the apex. Imagined: real pyramids are almost solid. The four leaning faces throw sound back down at the floor.">Pyramid</option>
+          <option value="kings" title="Queen's Chamber, Great Pyramid of Giza: about 5.8 × 5.2 m of fine limestone under a pointed roof of leaning slabs, 6.2 m at the ridge. Small and very hard, so echoes arrive within a few ms and ring for seconds.">Queen's Chamber</option>
+          <option value="gallery" title="Grand Gallery, Great Pyramid: 47 m long, 2.1 m wide, 8.6 m high (drawn level; the real one climbs at 26°). The side walls lean in, from 2.1 m apart at the floor to half that at the top.">Grand Gallery</option>
+          <option value="ear" title="Ear of Dionysius, Syracuse: a limestone cave 65 m deep and 23 m high, open at the mouth, with a pointed, ear-shaped section that is lower and narrower at the back. Drawn straight; the real cave bends in an S.">Ear of Dionysius</option>
+          <option value="plaza" title="A sunken plaza: 5 m below street level and open to the sky, an oval floor inside an upright stone wall. The piano and your seat start at the oval's two focus points, where the wall's echoes all meet; nothing returns from above.">Sunken plaza</option>
+          <option value="cistern" title="An empty round water cistern, 50 m across under a 4.5 m ceiling, bare concrete (the real ones have columns; this has none). The longest reverberation here.">Cistern</option>
+        </optgroup>
+        <optgroup label="Cathedrals">
+          <option value="notredame" title="Notre-Dame de Paris: about 128 m long inside, 33 m to the vault. Drawn as one pointed envelope with a rounded apse; the real building has columns, a transept and chapels.">Notre-Dame</option>
+          <option value="cologne" title="Cologne Cathedral: about 144 m long inside, 43.5 m to the vault, one of the tallest Gothic naves. Drawn as one pointed envelope with a rounded apse.">Cologne Cathedral</option>
+        </optgroup>
+        <option value="custom" hidden>Custom</option>
+      </select>
     </div>
     <div class="sep"></div>
     <div class="group">
-      <span class="lbl">Places</span>
-      <div class="seg" role="radiogroup" aria-label="Rooms modelled on real places">
-        <input type="radio" name="preset" id="pPyr" value="pyramid"><label for="pPyr" title="A hollow stone pyramid, 36 m square and 22 m to the apex. Imagined: real pyramids are almost solid. The four leaning faces throw sound back down at the floor.">Pyramid</label>
-        <input type="radio" name="preset" id="pKing" value="kings"><label for="pKing" title="Queen's Chamber, Great Pyramid of Giza: about 5.8 × 5.2 m of fine limestone under a pointed roof of leaning slabs, 6.2 m at the ridge. Small and very hard, so echoes arrive within a few ms and ring for seconds.">Queen's Chamber</label>
-        <input type="radio" name="preset" id="pGal" value="gallery"><label for="pGal" title="Grand Gallery, Great Pyramid: 47 m long, 2.1 m wide, 8.6 m high (drawn level; the real one climbs at 26°). The side walls lean in, from 2.1 m apart at the floor to half that at the top.">Grand Gallery</label>
-        <input type="radio" name="preset" id="pEar" value="ear"><label for="pEar" title="Ear of Dionysius, Syracuse: a limestone cave 65 m deep and 23 m high, open at the mouth, with a pointed, ear-shaped section that is lower and narrower at the back. Drawn straight; the real cave bends in an S.">Ear of Dionysius</label>
-        <input type="radio" name="preset" id="pPlaza" value="plaza"><label for="pPlaza" title="A sunken plaza: 5 m below street level and open to the sky, an oval floor inside an upright stone wall. The piano and your seat start at the oval's two focus points, where the wall's echoes all meet; nothing returns from above.">Sunken plaza</label>
-        <input type="radio" name="preset" id="pCist" value="cistern"><label for="pCist" title="An empty round water cistern, 50 m across under a 4.5 m ceiling, bare concrete (the real ones have columns; this has none). The longest reverberation here.">Cistern</label>
-      </div>
-    </div>
-    <div class="sep"></div>
-    <div class="group">
-      <span class="lbl">Cathedrals</span>
-      <div class="seg" role="radiogroup" aria-label="Cathedrals">
-        <input type="radio" name="preset" id="pND" value="notredame"><label for="pND" title="Notre-Dame de Paris: about 128 m long inside, 33 m to the vault. Drawn as one pointed envelope with a rounded apse; the real building has columns, a transept and chapels.">Notre-Dame</label>
-        <input type="radio" name="preset" id="pKoln" value="cologne"><label for="pKoln" title="Cologne Cathedral: about 144 m long inside, 43.5 m to the vault, one of the tallest Gothic naves. Drawn as one pointed envelope with a rounded apse.">Cologne Cathedral</label>
-      </div>
-    </div>
-    <div class="sep"></div>
-    <div class="group">
-      <span class="lbl">Clap replay</span>
-      <div class="seg" role="radiogroup" aria-label="Clap replay speed">
-        <input type="radio" name="speed" id="s1" value="1"><label for="s1">1×</label>
-        <input type="radio" name="speed" id="s4" value="0.25"><label for="s4">¼×</label>
-        <input type="radio" name="speed" id="s10" value="0.1"><label for="s10">1/10×</label>
-        <input type="radio" name="speed" id="s30" value="0.0333" checked><label for="s30">1/30×</label>
-      </div>
       <label class="check"><input id="paths" type="checkbox" checked> Reflection paths</label>
     </div>
     <div class="sep"></div>
@@ -233,6 +223,19 @@ footer a { color: var(--ink-2); }
     </div>
 
     <div class="side">
+      <div class="card">
+        <h2>Clap</h2>
+        <div class="group">
+          <button id="clap" title="One handclap. You hear it in real time; the picture shows it slowed down.">Clap</button>
+          <span class="lbl">Replay</span>
+      <div class="seg" role="radiogroup" aria-label="Clap replay speed">
+            <input type="radio" name="speed" id="s1" value="1"><label for="s1">1×</label>
+            <input type="radio" name="speed" id="s4" value="0.25"><label for="s4">¼×</label>
+            <input type="radio" name="speed" id="s10" value="0.1"><label for="s10">1/10×</label>
+            <input type="radio" name="speed" id="s30" value="0.0333" checked><label for="s30">1/30×</label>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <h2>At your seat</h2>
         <div class="stats">
@@ -293,6 +296,7 @@ const PRESETS = {
   ear:      { L: 65,  W: 10,  H: 23,  A: 9,  piano: [9, 5],      seat: [50, 5.5],  shape: 'ear', openName: 'cave mouth' },
   plaza:    { L: 46,  W: 34,  H: 5,   A: 10, piano: [7.5, 17],   seat: [38.5, 17],  shape: 'plaza', openName: 'open sky', early: 0.3, tail: 0.4 },
   cistern:  { L: 50,  W: 50,  H: 4.5, A: 2,  piano: [12, 25],    seat: [34, 27],   shape: 'cistern' },
+  pantheon: { L: 43.3, W: 43.3, H: 43.3, A: 32, piano: [12, 21.65], seat: [28, 22.5], shape: 'pantheon', openName: 'oculus' },
   notredame:{ L: 128, W: 40,  H: 33,  A: 25, piano: [92, 20],    seat: [46, 21],   shape: 'cathedral' },
   cologne:  { L: 144, W: 45,  H: 43.5, A: 14, piano: [104, 22.5], seat: [52, 23.5], shape: 'cathedral' },
 };
@@ -320,6 +324,8 @@ const SHAPES = {
   cathedral: { pts: (L, W, H) => { const prof = [[0, 0.5], [0.3, 0.5], [0.7, 0.19], [0.86, 0.15], [0.95, 0.08]], out = [];
     for (const [x, sc] of [[0, 1], [0.8 * L, 1], [0.8 * L + 0.2 * L * Math.sin(Math.PI / 6), Math.cos(Math.PI / 6)], [0.8 * L + 0.2 * L * Math.sin(Math.PI / 3), Math.cos(Math.PI / 3)]]) { for (const [u, hw] of prof) out.push([x, W / 2 - hw * W * sc, u * H], [x, W / 2 + hw * W * sc, u * H]); out.push([x, W / 2, H]); }
     out.push([L, W / 2, 0], [L, W / 2, H]); return out; } },
+  // Pantheon: a drum as tall as its radius under a half-sphere dome, with the oculus open at the top
+  pantheon: { pts: (L, W, H) => [[1, 0], [1, 0.5], [Math.cos(Math.PI / 6), 0.5 + 0.5 * Math.sin(Math.PI / 6)], [Math.cos(1.01), 0.5 + 0.5 * Math.sin(1.01)], [0.208, 1]].flatMap(([r, z]) => ringXY(12, L / 2, W / 2, r * L / 2, r * W / 2, z * H)), open: n => n[2] > 0.999 },
   // round concrete water tank
   cistern: { pts: (L, W, H) => [...ringXY(18, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(18, L / 2, W / 2, L / 2, W / 2, H)] },
 };
@@ -1032,17 +1038,18 @@ function showStats() {
   const dr = 20 * Math.log10(st.ac.rc / st.dist); $('dr').innerHTML = (dr > 0 ? '+' : '') + dr.toFixed(1);
 }
 function applyPreset(name) {
-  const p = PRESETS[name]; Object.assign(S, { L: p.L, W: p.W, H: p.H, A: p.A, piano: [...p.piano], seat: [...p.seat], refl: p.refl || SOLID, early: p.early || 0.2, tail: p.tail || 1, openName: p.openName || '', shape: p.shape || null });
+  const p = PRESETS[name]; $('roomSel').value = name; $('roomSel').title = $('roomSel').selectedOptions[0]?.title || '';
+  Object.assign(S, { L: p.L, W: p.W, H: p.H, A: p.A, piano: [...p.piano], seat: [...p.seat], refl: p.refl || SOLID, early: p.early || 0.2, tail: p.tail || 1, openName: p.openName || '', shape: p.shape || null });
   refreshGeometry();
 }
 for (const m of MATERIALS) {
   const b = document.createElement('button'); b.type = 'button'; b.textContent = m.name; b.dataset.name = m.name;
   b.style.left = m.pos + '%'; b.title = `${m.name}: average absorption α ${m.al.toFixed(2)}`;
-  b.addEventListener('click', () => { S.A = m.pos; document.querySelectorAll('input[name=preset]').forEach(r => r.checked = false); refreshGeometry(); });
+  b.addEventListener('click', () => { S.A = m.pos; $('roomSel').value = 'custom'; refreshGeometry(); });
   $('Aticks').append(b);
 }
-for (const k of ['L', 'W', 'H', 'A']) $(k).addEventListener('input', e => { S[k] = +e.target.value; document.querySelectorAll('input[name=preset]').forEach(r => r.checked = false); refreshGeometry(); });
-document.querySelectorAll('input[name=preset]').forEach(r => r.addEventListener('change', e => applyPreset(e.target.value)));
+for (const k of ['L', 'W', 'H', 'A']) $(k).addEventListener('input', e => { S[k] = +e.target.value; $('roomSel').value = 'custom'; refreshGeometry(); });
+$('roomSel').addEventListener('change', e => { if (PRESETS[e.target.value]) applyPreset(e.target.value); });
 $('roomOn').addEventListener('change', applyRoomToggle);
 $('play').addEventListener('click', () => { if (!ctx) return; playing ? pause() : play(); });
 $('clap').addEventListener('click', () => {
@@ -1224,7 +1231,7 @@ document.querySelectorAll('input[name=dance]').forEach(r => r.addEventListener('
   $('planHint').textContent = HINTS[d]; setSrcLabels();
   if (d !== 'fight') holoReset();
   if (d === 'off') { facePiano(); scheduleIR(); return; }
-  if (d === 'fight') { FG.k = -1; FG.c = null; $('pShow').checked = true; applyPreset('showroom'); return; }
+  if (d === 'fight') { FG.k = -1; FG.c = null; applyPreset('showroom'); return; }
   const want = d === 'waltz' ? 'valse' : 'tango';
   if (piece !== want && piece !== 'user' && !playing) { $(want === 'valse' ? 'pcValse' : 'pcTango').checked = true; switchPiece(want); }
 }));
