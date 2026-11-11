@@ -170,7 +170,7 @@ footer a { color: var(--ink-2); }
           <option value="kings" title="Queen's Chamber, Great Pyramid of Giza: about 5.8 × 5.2 m of fine limestone under a pointed roof of leaning slabs, 6.2 m at the ridge. Small and very hard, so echoes arrive within a few ms and ring for seconds.">Queen's Chamber</option>
           <option value="gallery" title="Grand Gallery, Great Pyramid: 47 m long, 2.1 m wide, 8.6 m high (drawn level; the real one climbs at 26°). The side walls lean in, from 2.1 m apart at the floor to half that at the top.">Grand Gallery</option>
           <option value="ear" title="Ear of Dionysius, Syracuse: a limestone cave 65 m deep and 23 m high, open at the mouth, with a pointed, ear-shaped section that is lower and narrower at the back. Drawn straight; the real cave bends in an S.">Ear of Dionysius</option>
-          <option value="plaza" title="A sunken plaza: 5 m below street level and open to the sky, an oval floor inside an upright stone wall. The piano and your seat start at the oval's two focus points, where the wall's echoes all meet; nothing returns from above.">Sunken plaza</option>
+          <option value="plaza" title="A sunken plaza: 5 m below street level and open to the sky, an oval floor with five terraces of steps climbing to the pavement. For the sound the steps are treated as a smooth bank, which throws most of it up and out.">Sunken plaza</option>
           <option value="cistern" title="An empty round water cistern, 50 m across under a 4.5 m ceiling, bare concrete (the real ones have columns; this has none). The longest reverberation here.">Cistern</option>
         </optgroup>
         <optgroup label="Cathedrals">
@@ -294,7 +294,7 @@ const PRESETS = {
   kings:    { L: 5.8, W: 5.2, H: 6.2, A: 4,  piano: [1.7, 2.6],  seat: [4.4, 2.9], shape: 'queens' },
   gallery:  { L: 47,  W: 2.1, H: 8.6, A: 6,  piano: [4, 1.05],   seat: [30, 1.05], shape: 'gallery' },
   ear:      { L: 65,  W: 10,  H: 23,  A: 9,  piano: [9, 5],      seat: [50, 5.5],  shape: 'ear', openName: 'cave mouth' },
-  plaza:    { L: 46,  W: 34,  H: 5,   A: 10, piano: [7.5, 17],   seat: [38.5, 17],  shape: 'plaza', openName: 'open sky', early: 0.3, tail: 0.4 },
+  plaza:    { L: 60,  W: 44,  H: 5,   A: 10, piano: [20, 22],    seat: [38, 23],    shape: 'plaza', openName: 'open sky', early: 0.3, tail: 0.4 },
   cistern:  { L: 50,  W: 50,  H: 4.5, A: 2,  piano: [12, 25],    seat: [34, 27],   shape: 'cistern' },
   pantheon: { L: 43.3, W: 43.3, H: 43.3, A: 32, piano: [12, 21.65], seat: [28, 22.5], shape: 'pantheon', openName: 'oculus' },
   notredame:{ L: 128, W: 40,  H: 33,  A: 25, piano: [92, 20],    seat: [46, 21],   shape: 'cathedral' },
@@ -317,13 +317,11 @@ const SHAPES = {
   gallery: { pts: (L, W, H) => [0, L].flatMap(x => [[x, 0, 0], [x, W, 0], [x, 0.26 * W, H], [x, 0.74 * W, H]]) },
   // Ear of Dionysius: a pointed, ear-shaped section, lower and narrower at the back, open at the mouth
   ear: { pts: (L, W, H) => [[0, 0.62, 0.72], [L, 1, 1]].flatMap(([x, sw, sh]) => Array.from({ length: 8 }, (_, i) => { const u = i / 7, hw = sw * W / 2 * Math.pow(Math.cos(Math.PI / 2 * u), 0.75); return [[x, W / 2 - hw, sh * H * u], [x, W / 2 + hw, sh * H * u]]; }).flat()), open: n => n[0] > 0.95 },
-  // sunken plaza: an oval floor inside an upright stone wall, open to the sky
-  plaza: { pts: (L, W, H) => [...ringXY(18, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(18, L / 2, W / 2, L / 2, W / 2, H)], open: n => n[2] > 0.95 },
-  // Gothic cathedral: aisles at the floor, walls leaning in to the nave, a pointed vault, and a rounded apse at the east end.
-  // One convex envelope: no columns, no transept arms, no side chapels.
-  cathedral: { pts: (L, W, H) => { const prof = [[0, 0.5], [0.3, 0.5], [0.7, 0.19], [0.86, 0.15], [0.95, 0.08]], out = [];
-    for (const [x, sc] of [[0, 1], [0.8 * L, 1], [0.8 * L + 0.2 * L * Math.sin(Math.PI / 6), Math.cos(Math.PI / 6)], [0.8 * L + 0.2 * L * Math.sin(Math.PI / 3), Math.cos(Math.PI / 3)]]) { for (const [u, hw] of prof) out.push([x, W / 2 - hw * W * sc, u * H], [x, W / 2 + hw * W * sc, u * H]); out.push([x, W / 2, H]); }
-    out.push([L, W / 2, 0], [L, W / 2, H]); return out; } },
+  // sunken plaza: an oval floor below street level, five terraces of steps climbing to the pavement, open to the sky.
+  // The solid used for the sound is the smooth bowl through the foot of each step; the steps and the street are drawn on top.
+  plaza: { pts: (L, W, H) => [...ringXY(20, L / 2, W / 2, 0.3 * L, 0.3 * W, 0), ...ringXY(20, L / 2, W / 2, L / 2, W / 2, H)], open: n => n[2] > 0.95, ground: 0.14,
+    decor: (L, W, H) => { const out = [], n = 5; for (let i = 0; i < n; i++) { const r = 0.3 + 0.2 * i / n; for (const z of [i, i + 1]) { const ring = ringXY(40, L / 2, W / 2, r * L, r * W, z * H / n); ring.push(ring[0]); out.push(ring); }
+      for (const [x, y] of ringXY(20, L / 2, W / 2, r * L, r * W, 0)) out.push([[x, y, i * H / n], [x, y, (i + 1) * H / n]]); } return out; } },
   // Pantheon: a drum as tall as its radius under a half-sphere dome, with the oculus open at the top
   pantheon: { pts: (L, W, H) => [[1, 0], [1, 0.5], [Math.cos(Math.PI / 6), 0.5 + 0.5 * Math.sin(Math.PI / 6)], [Math.cos(1.01), 0.5 + 0.5 * Math.sin(1.01)], [0.208, 1]].flatMap(([r, z]) => ringXY(12, L / 2, W / 2, r * L / 2, r * W / 2, z * H)), open: n => n[2] > 0.999 },
   // round concrete water tank
@@ -379,7 +377,8 @@ function buildRoom() {
   const mc = [0, 1].map(q => cut.reduce((t, p) => t + p[q], 0) / (cut.length || 1)); cut.sort((p, q) => Math.atan2(p[1] - mc[1], p[0] - mc[0]) - Math.atan2(q[1] - mc[1], q[0] - mc[0]));
   const op = faces.filter(f => f.open), openC = op.length ? [0, 1, 2].map(q => op.reduce((t, f) => t + f.c[q] * f.area, 0) / op.reduce((t, f) => t + f.area, 0)) : null;
   const pl = new Float64Array(4 * faces.length); faces.forEach((f, i) => pl.set([f.n[0], f.n[1], f.n[2], f.d], 4 * i));
-  ROOM = { key, V, faces, pl, edges, floorV, sec: cut, openC, vol: faces.reduce((t, f) => t + f.area * f.d, 0) / 3, shaped: !!sh, fx: [Math.min(...fxs), Math.max(...fxs)], fy: [Math.min(...fys), Math.max(...fys)], order: faces.length <= 8 ? 5 : faces.length <= 22 ? 3 : 2 };
+  const decor = sh && sh.decor ? sh.decor(L, W, H) : null, gm = sh && sh.ground ? sh.ground * Math.max(L, W) : 0;
+  ROOM = { key, V, faces, pl, edges, floorV, decor, gm, sec: cut, openC, vol: faces.reduce((t, f) => t + f.area * f.d, 0) / 3, shaped: !!sh, fx: [Math.min(...fxs), Math.max(...fxs)], fy: [Math.min(...fys), Math.max(...fys)], order: faces.length <= 8 ? 5 : faces.length <= 22 ? 3 : 2 };
 }
 // keep a point inside the room at height z, a margin away from every wall: slide it toward the middle of the floor
 function pullInside(pt, z, m) {
@@ -812,6 +811,16 @@ function drawPlan(tms) {
   for (let x = Math.ceil((fx0 + 0.01) / 5) * 5; x < fx1; x += 5) { poly(g, [proj(x, fy0, 0), proj(x, fy1, 0)]); g.stroke(); }
   for (let y = Math.ceil((fy0 + 0.01) / 5) * 5; y < fy1; y += 5) { poly(g, [proj(fx0, y, 0), proj(fx1, y, 0)]); g.stroke(); }
   g.restore();
+  // a sunken room: the street around its rim, and its steps
+  if (ROOM.gm) {
+    const m = ROOM.gm, outer = [[-m, -m], [L + m, -m], [L + m, W + m], [-m, W + m]].map(c => proj(c[0], c[1], H)), top = ROOM.faces.find(f => f.open), rim = top ? top.ix.map(k => C8[k]) : [];
+    if (outer.every(Boolean) && rim.length && rim.every(Boolean)) {
+      g.beginPath(); outer.forEach((c, i) => i ? g.lineTo(c[0], c[1]) : g.moveTo(c[0], c[1])); g.closePath(); rim.forEach((c, i) => i ? g.lineTo(c[0], c[1]) : g.moveTo(c[0], c[1])); g.closePath();
+      g.fillStyle = 'rgba(201,206,216,0.07)'; g.fill('evenodd'); g.strokeStyle = 'rgba(201,206,216,0.3)'; g.lineWidth = 1; poly(g, outer, true); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.045)'; for (let x = Math.ceil(-m / 5) * 5; x < L + m; x += 5) { g.save(); g.beginPath(); outer.forEach((c, i) => i ? g.lineTo(c[0], c[1]) : g.moveTo(c[0], c[1])); g.closePath(); rim.forEach((c, i) => i ? g.lineTo(c[0], c[1]) : g.moveTo(c[0], c[1])); g.closePath(); g.clip('evenodd'); poly(g, [proj(x, -m, H), proj(x, W + m, H)]); g.stroke(); g.restore(); }
+    }
+  }
+  if (ROOM.decor) { g.strokeStyle = 'rgba(201,206,216,0.28)'; g.lineWidth = 1; for (const line of ROOM.decor) { poly(g, line.map(c => proj(...c))); g.stroke(); } }
   // wavefronts: each echo is a sphere from an image source; drawn where it cuts the plane at the piano's height
   const p = S.piano, q = S.seat, z0 = S.pz, beta = IRSTATS ? IRSTATS.ac.beta : 0.95, nowp = performance.now();
   const plane = ROOM.sec.map(c => proj(c[0], c[1], z0)), shell = hull(C8);
