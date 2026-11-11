@@ -360,7 +360,7 @@ function buildEarly(sr) {
   const dmax = dist + Math.min(0.2, 0.5 * rt) * C;
   const len = Math.ceil((dmax / C + 0.005) * sr), ch = [new Float32Array(len), new Float32Array(len)];
   const imgs = images3D(src, dmax, head, ears);
-  let first = Infinity;
+  let first = Infinity, nDir = 0;
   for (const im of imgs) {
     const dx = im.x - head[0], dy = im.y - head[1], r = Math.hypot(dx, dy, im.z - head[2]) || 1;
     const side = (dx * lv[0] + dy * lv[1]) / r;              // head shadow: +1 = straight from the left
@@ -369,6 +369,7 @@ function buildEarly(sr) {
       const d = im.d[e], n = Math.round(d / C * sr);
       if (n < len) ch[e][n] += (e ? 0.6 - 0.4 * side : 0.6 + 0.4 * side) * amp / Math.max(d, 1);
     }
+    if (im.o === 0) nDir = Math.round(im.d[0] / C * sr);   // the direct sound's own sample at the left ear
     if (im.o > 0) { const ms = im.d[0] / C * 1000; if (ms - t0 * 1000 > 2 && ms < first) first = ms; }
   }
   // loudness: normalise early + tail together, so moving changes the balance, not the volume
@@ -385,8 +386,10 @@ function buildEarly(sr) {
     }
     bins[b] = s;
   }
-  const ref = bins[Math.floor(t0 / 0.002)] || Math.max(...bins);
-  IRSTATS = { ac, t0, bins, ref, direct: t0 * 1000, first, dist, norm, nImages: imgs.length };
+  // 0 dB = the bin that holds the left ear's direct sound. (Looking it up by the head-centre arrival time picked
+  // the neighbouring bin whenever the ear's arrival fell just across a 2 ms boundary, and the whole plot jumped to 0 dB.)
+  const dirBin = Math.min(nb - 1, Math.floor(nDir / bin)), ref = bins[dirBin] || Math.max(...bins);
+  IRSTATS = { ac, t0, bins, ref, dirBin, direct: t0 * 1000, first, dist, norm, nImages: imgs.length };
   return ch;
 }
 // kept for the offline check: early + tail as one stereo response
@@ -776,11 +779,11 @@ function drawEcho() {
   g.font = '10.5px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.strokeStyle = 'rgba(255,255,255,0.05)';
   for (const db of [0, -20, -40, -60]) { const y = db2y(db); g.beginPath(); g.moveTo(padL, y); g.lineTo(w - 8, y); g.stroke(); g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(db, padL - 6, y); }
   for (const ms of [0, 100, 200, 300, 400, 500, 600]) { g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(ms, ms2x(ms), h - padB + 5); }
-  const { bins, ref, direct, first } = IRSTATS, bw = Math.max(1, pw / 300 - 0.6);
+  const { bins, ref, direct, first, dirBin } = IRSTATS, bw = Math.max(1, pw / 300 - 0.6);
   for (let b = 0; b < 300; b++) {
     const db = 10 * Math.log10(bins[b] / ref + 1e-12); if (db < -60) continue;
     const ms = b * 2, x = ms2x(ms), y = db2y(Math.min(0, db));
-    const isDirect = Math.abs(ms - direct) < 2;
+    const isDirect = b === dirBin;
     g.fillStyle = isDirect ? COL.brass : (clapMs != null && ms <= clapMs ? COL.seat : 'rgba(106,174,232,0.45)');
     g.beginPath(); g.roundRect ? g.roundRect(x, y, bw, h - padB - y, [2, 2, 0, 0]) : g.rect(x, y, bw, h - padB - y); g.fill();
   }
