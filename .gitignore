@@ -5,6 +5,7 @@ out/*.wav
 out/*.m4a
 __pycache__/
 .DS_Store
+/build/
 
 # personal-use copies of copyrighted recordings and transcriptions: local only, never published or committed
 personal/

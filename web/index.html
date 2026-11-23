@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <title>Nocturne Echo Room</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
@@ -57,8 +57,18 @@ button[disabled] { opacity: .5; cursor: wait; }
 .seg label:first-of-type { border-radius: 7px 0 0 7px; margin-left: 0; }
 .seg label:last-of-type { border-radius: 0 7px 7px 0; }
 .seg input:checked + label { background: #2a3446; border-color: #4a5870; }
+.seg input:disabled + label { opacity: .55; cursor: default; }
+#passControls .slider { min-width: min(255px, 100%); }
+#passPitch { color: var(--seat); font-variant-numeric: tabular-nums; }
 .lbl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
 .slider { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; min-width: 190px; flex: 1 1 190px; }
+.architecture { flex-basis: 100%; border-top: 1px solid var(--line); padding-top: 8px; }
+.architecture summary { cursor: pointer; color: var(--ink); }
+.architecture summary output { color: var(--ink-2); margin-left: .6em; font-size: 12px; }
+.arch-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 10px 24px; margin-block: 12px; }
+.arch-fields label { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; color: var(--ink-2); }
+.arch-fields input { grid-column: 1/-1; margin: 0; }
+.arch-fields output { font-family: var(--f-data); color: var(--ink); }
 .slider.walls { flex: 1 1 100%; }
 .track { position: relative; padding-bottom: 17px; min-width: 0; }
 .track input { display: block; margin: 0; }
@@ -98,6 +108,7 @@ canvas.scene { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 
 footer { background: var(--glass); border-radius: 8px; padding: 6px 10px; max-width: 900px; }
 @media (max-width: 900px) {            /* phones: leave a window onto the room between the controls and the panels */
   .stage { min-height: 0; } .dock { margin-top: 52vh; max-width: none; }
+  body.design-study .controls { max-height: 48svh; overflow-y: auto; align-content: flex-start; }
   .seg { flex-wrap: wrap; row-gap: 4px; } .seg label { border-radius: 7px !important; margin-left: 0; }
   body { overflow-x: hidden; }
 }
@@ -131,6 +142,23 @@ footer a { color: var(--ink-2); }
     <div class="group">
       <button id="play" class="primary" disabled>Loading…</button>
       <label class="check"><input id="roomOn" type="checkbox" checked> Room sound</label>
+      <label class="check"><input id="dopplerOn" type="checkbox" aria-controls="passControls"> Doppler mode</label>
+    </div>
+    <div id="passControls" hidden>
+      <div class="group">
+        <label class="lbl" for="passShape">Trajectory</label>
+        <select id="passShape">
+          <option value="eight" selected>Figure eight</option>
+          <option value="oval">Oval lap</option>
+          <option value="straight">Straight pass</option>
+        </select>
+        <div class="slider">
+          <label class="lbl" for="passSpeed">Peak speed</label>
+          <input id="passSpeed" type="range" min="0" max="100" value="40" step="1">
+          <output id="passSpeedValue" for="passSpeed">40 m/s</output>
+        </div>
+        <span id="passPitch"></span>
+      </div>
     </div>
     <div class="sep"></div>
     <div class="group">
@@ -164,6 +192,12 @@ footer a { color: var(--ink-2); }
           <option value="salon">Salon</option>
           <option value="showroom">Showroom</option>
         </optgroup>
+        <optgroup label="Design studies">
+          <option value="ribbon" title="A sweeping ridge and a saddle between two roof crests.">Ribbon Hall</option>
+          <option value="petal" title="Curled roof petals around an adjustable opening to the sky.">Petal Atrium</option>
+          <option value="fan" title="A fan-shaped auditorium with folded roof plates spreading out from the stage.">Folded Fan Hall</option>
+          <option value="lantern" title="A tall, open interior enclosed by walls that twist from base to crown.">Spiral Lantern</option>
+        </optgroup>
         <optgroup label="Places">
           <option value="pantheon" title="Pantheon, Rome: a round drum 43.3 m across under a half-sphere dome, 43.3 m to the open oculus. The dome throws sound back toward the middle of the floor.">Pantheon</option>
           <option value="pyramid" title="A hollow stone pyramid, 36 m square and 22 m to the apex. Imagined: real pyramids are almost solid. The four leaning faces throw sound back down at the floor.">Pyramid</option>
@@ -177,7 +211,6 @@ footer a { color: var(--ink-2); }
           <option value="notredame" title="Notre-Dame de Paris: about 128 m long inside, 33 m to the vault. Drawn as one pointed envelope with a rounded apse; the real building has columns, a transept and chapels.">Notre-Dame</option>
           <option value="cologne" title="Cologne Cathedral: about 144 m long inside, 43.5 m to the vault, one of the tallest Gothic naves. Drawn as one pointed envelope with a rounded apse.">Cologne Cathedral</option>
         </optgroup>
-        <option value="custom" hidden>Custom</option>
       </select>
     </div>
     <div class="sep"></div>
@@ -203,11 +236,16 @@ footer a { color: var(--ink-2); }
       </div>
     </div>
     <div class="slider" style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:10px 22px;min-width:0">
-      <div class="slider"><span class="lbl">Length</span><input id="L" type="range" min="5" max="150" step="0.5"><output id="Lo"></output></div>
-      <div class="slider"><span class="lbl">Width</span><input id="W" type="range" min="2" max="50" step="0.5"><output id="Wo"></output></div>
-      <div class="slider"><span class="lbl">Height</span><input id="H" type="range" min="4" max="45" step="0.5"><output id="Ho"></output></div>
+      <div class="slider"><label class="lbl" for="L">Length</label><input id="L" type="range" min="5" max="150" step="0.1"><output id="Lo"></output></div>
+      <div class="slider"><label class="lbl" for="W">Width</label><input id="W" type="range" min="2" max="50" step="0.1"><output id="Wo"></output></div>
+      <div class="slider"><label class="lbl" for="H">Height</label><input id="H" type="range" min="4" max="45" step="0.1"><output id="Ho"></output></div>
       <div class="slider walls"><span class="lbl">Walls</span><div class="track"><input id="A" type="range" min="0" max="100" step="1" aria-label="Wall absorption, hard marble to heavy curtains"><div class="ticks" id="Aticks"></div></div><output id="Ao"></output></div>
     </div>
+    <details class="architecture" id="architecture">
+      <summary>Architecture <output id="archMeasures"></output></summary>
+      <div class="arch-fields" id="archFields"></div>
+      <button type="button" id="archReset">Restore preset</button>
+    </details>
   </div>
 
   <div class="stage">
@@ -261,7 +299,12 @@ footer a { color: var(--ink-2); }
   </div>
 
   <footer>
-    Performances: Chopin Nocturne (2011) and Albéniz, Tango in D arr. Godowsky (2009), International Piano-e-Competition, from the <a href="https://magenta.tensorflow.org/datasets/maestro" target="_blank" rel="noopener">MAESTRO v3 dataset</a> (CC BY-NC-SA 4.0). Piano: <a href="https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html" target="_blank" rel="noopener">Salamander Grand Piano V3</a> by Alexander Holm (CC BY 3.0). Waldteufel, The Skaters’ Waltz: Sousa’s Band conducted by Arthur Pryor, recorded 17 May 1912, public domain, from the <a href="https://archive.org/details/loc-jukebox-128290-skaters-waltz-los-patinadores-vals" target="_blank" rel="noopener">Library of Congress National Jukebox</a>. Room: image-source reflections plus a Sabine diffuse tail, computed in your browser and applied with a convolution reverb; this is a model of a shoebox room, not a recording of a real hall.
+    The Chopin and Albéniz–Godowsky performances come from the International Piano-e-Competition via
+    <a href="https://magenta.tensorflow.org/datasets/maestro" target="_blank" rel="noopener">MAESTRO v3</a>
+    (<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>).
+    The piano renders use Alexander Holm’s Salamander Grand Piano, adapted to SF2 by FreePats (CC BY 3.0).
+    The 1912 Skaters’ Waltz recording is by Sousa’s Band, courtesy of the Library of Congress, National Jukebox.
+    <a href="https://github.com/LEE-CHENYU/nocturne-echo-room/blob/main/ASSETS.md" target="_blank" rel="noopener">Music credits and licenses</a>.
   </footer>
 </div>
 
@@ -276,6 +319,16 @@ const PIECES = {
   // user: { onsets, beats } filled in when you load your own file (see analyseTrack)
   tango:    { file: 'tango_dry_lossless.mp4',   fallback: 'tango_dry.mp3',    onsets: [[0.957,42,38],[1.947,44,57],[2.134,48,62],[2.794,39,33],[3.453,39,38],[4.426,37,57],[4.647,48,62],[5.361,34,33],[6.165,56,66],[6.212,32,38],[6.622,66,66],[6.836,65,66],[6.978,51,66],[7.013,43,56],[7.091,52,69],[7.139,33,62],[7.207,57,57],[7.831,53,45],[8.145,37,54],[8.241,37,62],[8.37,33,38],[8.432,52,69],[9.337,37,56],[9.44,46,57],[9.818,48,45],[9.883,74,74],[9.935,38,66],[10.083,81,76],[10.124,52,69],[10.311,41,38],[10.414,71,74],[11.132,69,69],[11.178,50,56],[11.251,62,76],[11.345,74,57],[11.382,61,66],[11.909,59,60],[11.952,36,45],[12.585,48,67],[12.633,38,38],[13.655,36,56],[13.73,45,57],[14.122,47,45],[14.194,69,67],[14.245,40,64],[14.406,80,69],[14.447,55,66],[14.642,46,38],[14.738,80,67],[15.518,83,73],[15.553,61,56],[15.732,82,73],[15.768,49,57],[16.301,70,74],[16.336,56,45],[16.996,71,38],[17.074,66,76],[17.151,64,74],[17.806,57,73],[17.841,41,69],[18.211,58,56],[18.342,52,57],[18.725,48,45],[18.794,80,73],[19.059,83,67],[19.31,45,38],[19.435,81,74],[19.47,47,71],[20.078,65,66],[20.227,57,56],[20.361,58,57],[20.836,53,45],[21.26,24,45],[21.292,37,38],[21.372,54,71],[21.411,39,65],[22.124,39,66],[22.605,53,56],[22.72,61,57],[23.052,62,65],[23.414,54,69],[23.956,40,61],[23.992,33,64],[24.77,38,38],[24.85,46,45],[24.935,43,54],[25.009,44,62],[25.146,63,66],[25.53,78,66],[25.734,76,66],[25.874,59,54],[25.943,43,55],[25.982,61,62],[26.021,51,56],[26.142,61,57],[26.668,54,45],[27.013,44,54],[27.107,36,62],[27.236,38,38],[27.344,52,69],[28.121,57,69],[28.238,45,81],[28.314,51,86],[28.388,58,78],[28.423,49,74],[28.849,76,71],[28.884,54,67],[28.915,48,45],[29.049,80,73],[29.229,57,38],[29.345,78,74],[29.393,49,66],[29.857,77,46],[30.008,75,73],[30.048,53,67],[30.232,66,76],[30.272,82,47],[30.303,61,66],[30.841,75,48],[30.884,56,38],[31.514,63,57],[31.547,47,38],[32.427,53,69],[32.534,50,81],[32.604,60,85],[32.698,57,79],[32.729,53,76],[33.138,76,67],[33.177,55,45],[33.342,84,66],[33.552,54,38],[33.685,84,67],[34.426,84,54],[34.508,47,55],[34.572,55,56],[34.661,83,73],[34.695,57,57],[35.246,59,71],[35.283,38,45],[35.986,64,38],[36.039,52,71],[36.12,64,74],[36.478,57,69],[37.023,51,69],[37.094,52,81],[37.158,62,85],[37.246,65,93],[37.289,49,76],[37.695,84,73],[37.742,55,45],[37.923,81,67],[38.103,58,38],[38.31,82,71],[38.374,50,49],[39.029,70,66],[39.089,52,54],[39.148,47,55],[39.203,58,56],[39.305,65,57],[39.78,55,45],[40.238,36,38],[40.312,55,65],[41.053,42,66],[41.568,44,69],[41.641,50,81],[41.719,49,86],[41.82,50,78],[41.859,44,74],[42.466,94,38],[42.497,57,46],[42.53,30,66],[43.12,57,35],[43.217,86,74],[43.267,45,62],[43.66,86,73],[43.926,88,71],[44.043,57,47],[44.215,87,52],[44.249,64,58],[44.579,71,83],[44.72,83,71],[44.75,65,59],[45.001,67,62],[45.079,68,66],[45.216,88,74],[45.251,70,35],[45.794,63,66],[45.84,79,59],[46.057,88,58],[46.104,75,67],[46.212,74,66],[46.267,86,57],[46.544,82,65],[46.673,82,56],[46.789,82,66],[46.915,72,55],[47.003,68,62],[47.129,86,35],[47.487,90,71],[47.746,96,74],[47.876,77,47],[48.023,90,53],[48.053,70,67],[48.366,79,83],[48.486,88,61],[48.969,88,62],[49.003,60,47],[49.388,81,53],[49.543,82,71],[49.698,82,54],[49.865,72,47],[50.065,79,70],[50.197,82,62],[50.69,80,69],[50.842,68,40],[50.953,88,78],[51.16,80,68],[51.43,66,45],[51.556,79,69],[51.992,84,76],[52.033,57,68],[52.121,54,46],[52.152,46,52],[52.247,85,73],[52.277,69,67],[52.457,54,47],[52.54,82,74],[52.578,56,66],[53.0,72,71],[53.04,50,50],[53.452,47,49],[53.617,68,64],[54.292,59,57],[54.844,44,54],[54.954,61,69],[55.008,39,64],[55.359,70,71],[55.536,66,63],[55.684,70,73],[55.887,48,62],[55.971,48,69],[56.189,68,76],[56.242,44,47],[56.621,66,74],[56.785,59,81],[56.93,70,73],[57.206,53,76],[57.319,63,73],[57.359,43,62],[57.753,27,52],[57.986,55,71],[58.206,34,40],[58.824,46,61],[58.871,35,45],[59.592,47,56],[59.97,55,57],[60.275,45,61],[60.37,40,55],[61.382,46,81],[61.432,37,57],[61.465,28,61],[62.724,46,78],[62.762,34,38],[63.201,68,78],[63.242,40,66],[63.461,69,66],[63.646,65,45],[63.704,52,50],[63.76,65,81],[63.794,40,57],[63.883,71,79],[63.915,41,62],[64.461,73,57],[64.501,47,66],[64.613,34,50],[64.663,40,45],[64.809,52,69],[64.887,49,74],[64.98,51,78],[65.122,59,81],[65.158,45,38],[65.974,49,69],[66.081,49,74],[66.146,59,86],[66.217,65,78],[66.693,73,57],[66.837,52,50],[66.878,88,76],[66.993,45,45],[67.204,73,78],[67.249,42,38],[67.98,71,73],[68.029,48,45],[68.09,53,50],[68.191,67,57],[68.275,81,74],[68.333,47,69],[68.839,59,72],[68.87,49,57],[69.034,46,51],[69.139,43,45],[69.555,56,73],[69.594,39,38],[69.633,31,45],[70.447,44,69],[70.548,41,81],[70.589,25,76],[70.625,56,85],[70.695,60,79],[71.276,77,67],[71.312,63,62],[71.51,68,52],[71.564,93,70],[71.663,58,47],[71.845,91,71],[71.885,57,36],[71.996,62,47],[72.129,84,52],[72.456,97,61],[72.624,95,73],[72.857,97,59],[72.977,79,55],[73.09,77,50],[73.135,34,52],[73.255,99,74],[73.738,92,30],[74.342,90,73],[74.379,80,58],[74.521,82,52],[74.641,75,54],[74.783,92,66],[75.258,93,67],[75.492,73,66],[75.59,96,71],[75.668,84,65],[75.852,98,62],[75.979,84,59],[76.092,79,55],[76.245,95,42],[76.392,96,74],[76.609,89,30],[76.815,99,78],[77.288,81,42],[77.503,84,32],[77.707,63,34],[77.879,55,35],[77.964,77,73],[78.753,60,74],[79.191,41,54],[79.345,47,59],[79.794,43,54],[79.884,76,74],[79.932,46,62],[80.44,38,47],[80.551,73,71],[80.625,32,64],[80.995,79,76],[81.194,64,70],[81.316,78,78],[81.393,45,55],[81.632,69,69],[81.689,39,59],[81.932,63,68],[82.089,67,52],[82.276,57,67],[82.576,25,47],[82.671,55,66],[83.048,64,53],[83.346,74,54],[83.557,59,57],[83.669,64,55],[84.299,50,74],[84.331,40,47],[84.764,32,64],[84.895,38,71],[85.014,40,47],[85.135,52,73],[85.415,52,76],[85.581,52,78],[85.723,58,76],[85.876,56,83],[85.982,65,55],[86.138,55,88],[86.197,42,59],[86.305,51,85],[86.426,57,83],[86.556,52,78],[86.618,45,55],[86.812,5,77],[86.871,58,71],[87.099,41,47],[87.247,59,66],[87.292,29,73],[87.728,60,53],[88.062,70,54],[88.238,63,57],[88.348,72,55],[88.831,61,45],[88.962,82,74],[89.001,54,62],[89.544,53,44],[89.701,77,71],[89.751,46,62],[90.15,86,73],[90.428,88,74],[90.564,72,54],[90.734,80,71],[90.767,63,56],[91.259,58,48],[91.314,75,62],[91.884,65,37],[92.022,75,63],[92.512,66,48],[92.681,85,61],[92.884,68,49],[92.999,63,53],[93.118,81,51],[93.436,52,49],[93.581,72,61],[93.984,46,56],[94.108,69,68],[94.146,52,64],[94.448,63,70],[94.603,50,44],[94.734,54,73],[94.805,62,71],[94.992,48,37],[95.172,53,61],[95.542,41,49],[95.753,56,59],[96.0,44,61],[96.358,44,42],[96.501,58,73],[96.534,45,58],[97.035,55,48],[97.389,51,49],[97.658,42,53],[97.76,44,51],[98.461,50,49],[99.094,34,42],[99.216,52,71],[99.257,48,61],[99.71,62,73],[99.975,60,77],[100.164,47,65],[100.229,60,77],[100.298,63,75],[100.349,15,83],[100.807,64,42],[100.837,44,49],[101.281,41,42],[101.435,69,61],[101.876,73,63],[102.1,71,65],[102.214,68,63],[102.293,52,65],[102.391,79,63],[102.424,57,78],[102.721,77,61],[102.874,67,70],[102.93,46,42],[103.033,77,66],[103.307,46,42],[103.441,66,66],[103.845,69,65],[104.128,64,63],[104.233,66,73],[104.438,60,65],[104.993,56,49],[105.051,24,42],[105.487,37,42],[105.538,43,54],[105.637,66,70],[105.676,52,61],[106.023,81,71],[106.28,82,72],[106.417,63,49],[106.542,80,66],[106.573,60,57],[106.802,68,77],[106.882,79,75],[107.043,61,49],[107.299,79,73],[107.421,59,42],[107.496,56,49],[107.621,53,65],[107.747,75,71],[107.796,70,56],[108.305,74,73],[108.478,77,61],[108.613,67,77],[108.762,66,75],[108.837,65,77],[108.91,71,49],[109.413,69,73],[109.447,49,49],[109.479,30,42],[110.147,50,42],[111.858,45,66],[111.888,35,38],[112.587,52,74],[112.961,59,71],[113.211,36,43],[113.332,61,60],[113.845,50,67],[114.073,52,59],[114.286,63,74],[114.628,50,65],[114.66,36,44],[115.204,49,73],[115.241,40,37],[116.029,40,42],[117.865,48,66],[117.898,40,36],[118.38,54,69],[118.585,56,35],[118.779,59,67],[119.07,42,40],[119.26,55,57],[119.898,53,64],[120.155,45,50],[120.695,46,71],[121.52,42,64],[121.551,32,33],[123.191,42,65],[125.202,41,26],[125.24,24,38],[125.723,43,55],[126.01,55,56],[126.202,54,54],[126.273,37,55],[126.326,53,56],[126.487,52,57],[127.091,46,66],[127.126,34,45],[127.41,43,54],[127.503,32,62],[127.676,46,69],[127.73,37,38],[128.335,49,78],[128.38,36,74],[128.492,43,57],[128.647,43,69],[128.753,45,74],[128.853,56,66],[128.885,30,62],[129.286,66,45],[129.323,42,66],[129.497,82,76],[129.535,48,69],[129.727,48,38],[129.824,67,74],[130.25,70,54],[130.448,76,57],[130.685,66,76],[130.737,75,62],[131.242,70,65],[131.276,51,51],[131.652,59,66],[132.059,37,38],[132.138,52,61],[132.181,24,57],[132.734,55,73],[132.941,51,67],[133.293,46,71],[133.355,33,57],[133.852,76,62],[133.883,60,45],[134.042,81,66],[134.214,76,38],[134.367,82,61],[135.007,82,59],[135.138,89,69],[135.331,89,57],[135.889,91,45],[135.921,62,56],[136.503,80,55],[136.572,77,76],[136.661,83,74],[136.72,66,45],[137.004,80,38],[137.202,82,44],[137.415,82,45],[137.844,81,52],[138.145,86,54],[138.395,87,55],[138.585,82,45],[138.77,84,38],[138.943,87,57],[139.135,94,59],[139.583,97,61],[140.052,76,38],[140.122,86,61],[140.866,74,62],[141.065,81,45],[141.216,83,57],[141.595,85,45],[141.69,97,62],[141.979,82,50],[142.326,85,34],[142.422,93,64],[142.806,90,65],[143.039,87,69],[143.135,83,53],[143.297,90,67],[143.339,67,62],[143.599,95,74],[143.76,84,61],[143.895,91,76],[144.126,66,60],[144.262,87,69],[144.585,80,77],[144.621,76,41],[144.784,84,72],[144.828,70,57],[144.939,80,69],[145.01,76,70],[145.078,78,60],[145.345,78,67],[145.469,76,61],[145.6,80,65],[145.837,56,43],[145.957,76,70],[145.99,62,61],[146.332,68,62],[146.547,69,66],[146.674,58,50],[146.839,73,69],[146.885,51,60],[147.184,76,70],[147.34,61,58],[147.466,76,73],[147.707,41,57],[147.846,65,76],[147.885,42,66],[148.331,62,74],[148.637,60,65],[148.79,38,38],[148.996,52,62],[149.047,36,45],[149.331,45,69],[149.392,56,67],[149.682,46,64],[149.72,30,37],[150.167,46,66],[150.858,41,35],[150.901,18,47],[151.711,50,67],[152.046,62,69],[152.151,56,72],[152.382,64,67],[152.419,43,81],[153.145,54,66],[153.723,60,40],[153.762,35,47],[154.237,61,71],[154.643,57,66],[154.746,59,71],[155.009,52,56],[155.065,47,74],[155.721,40,40],[156.76,37,33],[156.802,27,45],[157.918,44,67],[157.949,35,58],[158.702,56,57],[158.776,11,61],[158.862,49,69],[158.995,48,57],[159.069,48,67],[159.146,54,66],[159.186,49,81],[159.966,38,33],[160.09,38,55],[160.245,40,61],[160.366,43,64],[160.62,52,69],[162.41,44,54],[162.444,29,26],[163.478,43,69],[163.642,58,81],[163.689,46,62],[164.332,46,45],[165.009,43,62],[165.04,35,38],[166.126,44,69],[166.296,53,62],[166.986,45,45],[167.702,40,38],[167.75,28,54],[169.038,42,50],[169.079,31,57],[170.832,51,74],[170.867,37,62]], beatPitch: 55, beatGap: 0.25 },
 };
+// The Mac host supplies these local file routes at launch.
+for (const [i, track] of (window.nocturneTracks || []).entries()) {
+  const key = 'library' + i;
+  PIECES[key] = { file: track.url, analyse: true, waltzEvery: 3, fmt: track.title };
+  const radio = document.createElement('input'), label = document.createElement('label');
+  radio.type = 'radio'; radio.name = 'piece'; radio.id = key; radio.value = key;
+  label.htmlFor = key; label.title = track.title;
+  label.textContent = track.title.length > 42 ? track.title.slice(0, 41) + '…' : track.title;
+  document.getElementById('pcUser').before(radio, label);
+}
 // beats = bass notes spaced apart: in the waltz, beat 1 of each bar; in the tango (2/4), roughly each beat
 for (const p of Object.values(PIECES)) {
   p.onsets = p.onsets || [];                      // a piece with analyse: true gets its onsets and beats when it is decoded
@@ -288,6 +341,10 @@ const PRESETS = {
   marble: { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21] },   // the one plain box. RT60 ~4.3 s, as in the Python render
   // Every other room is a solid built from curves (see SHAPES): shape = its name there
   hall:     { L: 48,  W: 30,  H: 18,  A: 65, piano: [8, 15],     seat: [26, 15],   shape: 'hall' },
+  ribbon:   { L: 78, W: 38, H: 26, A: 51, piano: [14, 18], seat: [47, 22], shape: 'ribbon', view: { yaw: -1.24, pitch: 0.29, zoom: 0.80 } },
+  petal:    { L: 52, W: 48, H: 19, A: 51, piano: [14, 21], seat: [34, 26], shape: 'petal', openName: 'oculus', view: { yaw: -0.94, pitch: 0.82, fit: true } },
+  fan:      { L: 54, W: 42, H: 18, A: 51, piano: [8, 21], seat: [37, 24], shape: 'fan', view: { yaw: -0.68, pitch: 0.47, fit: true } },
+  lantern:  { L: 28, W: 26, H: 37, A: 51, piano: [9, 12], seat: [19, 14], shape: 'lantern', view: { yaw: -0.76, pitch: 0.32, fit: true } },
   salon:    { L: 16,  W: 11,  H: 6,   A: 53, piano: [4.5, 5.5],  seat: [11, 6],    shape: 'salon' },
   showroom: { L: 42,  W: 30,  H: 13,  A: 45, piano: [3, 15],     seat: [24, 15],   shape: 'showroom' },
   pyramid:  { L: 36,  W: 36,  H: 22,  A: 14, piano: [10, 18],    seat: [24, 19],   shape: 'pyramid' },
@@ -300,39 +357,643 @@ const PRESETS = {
   notredame:{ L: 128, W: 40,  H: 33,  A: 25, piano: [92, 20],    seat: [46, 21],   shape: 'cathedral' },
   cologne:  { L: 144, W: 45,  H: 43.5, A: 14, piano: [104, 22.5], seat: [52, 23.5], shape: 'cathedral' },
 };
-// Room shapes. Each returns points on the room's surface, sampled from curves, for a room L long, W wide, H high;
-// the room is the convex solid that wraps them. open(n) picks the faces that are openings, by their outward normal.
-const ringXY = (n, cx, cy, rx, ry, z, a0 = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + 2 * Math.PI * i / n; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a), z]; });
+// Distances are in metres. Profile ratios are expressed as percentages of the
+// named dimension so that changing the overall scale preserves the architecture.
+const percent = (label, value, min, max, step = 1) => ({ label, value, min, max, step, unit: '%' });
+const count = (label, value, min, max, step = 1) => ({ label, value, min, max, step, unit: '' });
+const ringXY = (n, cx, cy, rx, ry, z) => Array.from({ length: n }, (_, i) => {
+  const angle = 2 * Math.PI * i / n;
+  return [cx + rx * Math.cos(angle), cy + ry * Math.sin(angle), z];
+});
+const ellipse = (L, W, z, diameter, sides) => ringXY(sides, L / 2, W / 2, L * diameter / 2, W * diameter / 2, z);
+const rectangle = (L, W) => [[0, 0], [L, 0], [L, W], [0, W]];
+const horizontalCap = n => n[2] > 1 - 1e-10;
+
 const SHAPES = {
-  // fan-shaped plan widening from the stage, under a barrel vault
-  hall: { pts: (L, W, H) => [[0, 0.62 * W], [L, W]].flatMap(([x, w]) => [[x, W / 2 - w / 2, 0], [x, W / 2 + w / 2, 0], ...Array.from({ length: 9 }, (_, i) => { const a = Math.PI * i / 8; return [x, W / 2 + w / 2 * Math.cos(a), 0.6 * H + 0.4 * H * Math.sin(a)]; })]) },
-  // oval room under a coved ceiling
-  salon: { pts: (L, W, H) => [...ringXY(10, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(10, L / 2, W / 2, L / 2, W / 2, 0.62 * H), ...ringXY(10, L / 2, W / 2, 0.39 * L, 0.39 * W, 0.88 * H), ...ringXY(10, L / 2, W / 2, 0.2 * L, 0.2 * W, H)] },
-  // shed with cut-off corners and a hipped roof
-  showroom: { pts: (L, W, H) => { const c = 0.16 * Math.min(L, W), o = [[c, 0], [L - c, 0], [L, c], [L, W - c], [L - c, W], [c, W], [0, W - c], [0, c]]; return [...o.map(([x, y]) => [x, y, 0]), ...o.map(([x, y]) => [x, y, 0.68 * H]), [0.3 * L, W / 2, H], [0.7 * L, W / 2, H]]; } },
-  pyramid: { pts: (L, W, H) => [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0], [L / 2, W / 2, H]] },
-  // Queen's Chamber: upright walls, pointed roof of leaning slabs
-  queens: { pts: (L, W, H) => [[0, 0], [L, 0], [L, W], [0, W]].flatMap(([x, y]) => [[x, y, 0], [x, y, 0.75 * H]]).concat([[0, W / 2, H], [L, W / 2, H]]) },
-  // Grand Gallery: corbelled walls closing in toward the top
-  gallery: { pts: (L, W, H) => [0, L].flatMap(x => [[x, 0, 0], [x, W, 0], [x, 0.26 * W, H], [x, 0.74 * W, H]]) },
-  // Ear of Dionysius: a pointed, ear-shaped section, lower and narrower at the back, open at the mouth
-  ear: { pts: (L, W, H) => [[0, 0.62, 0.72], [L, 1, 1]].flatMap(([x, sw, sh]) => Array.from({ length: 8 }, (_, i) => { const u = i / 7, hw = sw * W / 2 * Math.pow(Math.cos(Math.PI / 2 * u), 0.75); return [[x, W / 2 - hw, sh * H * u], [x, W / 2 + hw, sh * H * u]]; }).flat()), open: n => n[0] > 0.95 },
-  // sunken plaza: an oval floor below street level, five terraces of steps climbing to the pavement, open to the sky.
-  // The solid used for the sound is the smooth bowl through the foot of each step; the steps and the street are drawn on top.
-  plaza: { pts: (L, W, H) => [...ringXY(20, L / 2, W / 2, 0.3 * L, 0.3 * W, 0), ...ringXY(20, L / 2, W / 2, L / 2, W / 2, H)], open: n => n[2] > 0.95, ground: 0.14,
-    decor: (L, W, H) => { const out = [], n = 5; for (let i = 0; i < n; i++) { const r = 0.3 + 0.2 * i / n; for (const z of [i, i + 1]) { const ring = ringXY(40, L / 2, W / 2, r * L, r * W, z * H / n); ring.push(ring[0]); out.push(ring); }
-      for (const [x, y] of ringXY(20, L / 2, W / 2, r * L, r * W, 0)) out.push([[x, y, i * H / n], [x, y, (i + 1) * H / n]]); } return out; } },
-  // Pantheon: a drum as tall as its radius under a half-sphere dome, with the oculus open at the top
-  pantheon: { pts: (L, W, H) => [[1, 0], [1, 0.5], [Math.cos(Math.PI / 6), 0.5 + 0.5 * Math.sin(Math.PI / 6)], [Math.cos(1.01), 0.5 + 0.5 * Math.sin(1.01)], [0.208, 1]].flatMap(([r, z]) => ringXY(12, L / 2, W / 2, r * L / 2, r * W / 2, z * H)), open: n => n[2] > 0.999 },
-  // round concrete water tank
-  cistern: { pts: (L, W, H) => [...ringXY(18, L / 2, W / 2, L / 2, W / 2, 0), ...ringXY(18, L / 2, W / 2, L / 2, W / 2, H)] },
+  hall: {
+    params: {
+      stage: percent('Stage-end width / hall width', 62, 25, 100),
+      spring: percent('Vault spring height / height', 60, 15, 90),
+    },
+    pts(L, W, H, p) {
+      return [[0, p.stage / 100], [L, 1]].flatMap(([x, width]) => {
+        const radius = W * width / 2;
+        const wall = H * p.spring / 100;
+        const arch = Array.from({ length: 9 }, (_, i) => {
+          const angle = Math.PI * i / 8;
+          return [x, W / 2 + radius * Math.cos(angle), wall + (H - wall) * Math.sin(angle)];
+        });
+        return [[x, W / 2 - radius, 0], [x, W / 2 + radius, 0], ...arch];
+      });
+    },
+  },
+  salon: {
+    params: {
+      spring: percent('Cove spring height / height', 62, 20, 85),
+      crown: percent('Flat ceiling width / width', 40, 15, 75),
+    },
+    pts(L, W, H, p) {
+      const wall = H * p.spring / 100, top = p.crown / 100;
+      return [[0, 1], [wall, 1], [wall + (H - wall) * 13 / 19, 1 - (1 - top) * 11 / 30], [H, top]]
+        .flatMap(([z, width]) => ellipse(L, W, z, width, 10));
+    },
+  },
+  showroom: {
+    params: {
+      chamfer: percent('Corner cut / shorter side', 16, 2, 40),
+      eaves: percent('Eaves height / height', 68, 20, 90),
+      ridge: percent('Ridge length / length', 40, 10, 90),
+    },
+    pts(L, W, H, p) {
+      const cut = Math.min(L, W) * p.chamfer / 100, inset = L * (1 - p.ridge / 100) / 2;
+      const plan = [[cut, 0], [L-cut, 0], [L, cut], [L, W-cut], [L-cut, W], [cut, W], [0, W-cut], [0, cut]];
+      return [...plan.map(([x,y]) => [x,y,0]), ...plan.map(([x,y]) => [x,y,H*p.eaves/100]),
+        [inset, W/2, H], [L-inset, W/2, H]];
+    },
+  },
+  pyramid: {
+    params: {
+      apexX: percent('Apex position / length', 50, 25, 75),
+      apexY: percent('Apex position / width', 50, 25, 75),
+    },
+    pts: (L, W, H, p) => [...rectangle(L, W).map(([x,y]) => [x,y,0]), [L*p.apexX/100, W*p.apexY/100, H]],
+  },
+  queens: {
+    params: {
+      eaves: percent('Eaves height / height', 75, 20, 90),
+      ridge: percent('Ridge position / width', 50, 25, 75),
+    },
+    pts: (L, W, H, p) => [...rectangle(L, W).flatMap(([x,y]) => [[x,y,0], [x,y,H*p.eaves/100]]),
+      [0, W*p.ridge/100, H], [L, W*p.ridge/100, H]],
+  },
+  gallery: {
+    params: { top: percent('Ceiling width / floor width', 48, 15, 100) },
+    pts(L, W, H, p) {
+      const inset = W * (1 - p.top / 100) / 2;
+      return [0, L].flatMap(x => [[x,0,0], [x,W,0], [x,inset,H], [x,W-inset,H]]);
+    },
+  },
+  ear: {
+    params: {
+      backWidth: percent('Rear width / mouth width', 62, 25, 100),
+      backHeight: percent('Rear height / mouth height', 72, 35, 100),
+      profile: { label: 'Arch profile exponent', value: 0.75, min: 0.4, max: 1, step: 0.05, unit: '' },
+    },
+    pts(L, W, H, p) {
+      return [[0, p.backWidth/100, p.backHeight/100], [L, 1, 1]].flatMap(([x, width, height]) => {
+        const section = [];
+        for (let i = 0; i < 7; i++) {
+          const u = i/7, half = W * width/2 * Math.pow(Math.cos(Math.PI*u/2), p.profile);
+          section.push([x,W/2-half,H*height*u], [x,W/2+half,H*height*u]);
+        }
+        return [...section, [x, W/2, H*height]];
+      });
+    },
+    open: n => n[0] > 1 - 1e-10,
+  },
+  plaza: {
+    params: {
+      floor: percent('Plaza floor width / rim width', 60, 30, 90),
+      terraces: count('Visible terrace count', 5, 2, 12),
+    },
+    pts: (L, W, H, p) => [...ellipse(L,W,0,p.floor/100,20), ...ellipse(L,W,H,1,20)],
+    open: horizontalCap,
+    ground: 0.14,
+    decor(L, W, H, p) {
+      const lines = [], bottom = p.floor/100;
+      for (let i = 0; i < p.terraces; i++) {
+        const width = bottom + (1-bottom)*i/p.terraces;
+        for (const level of [i, i+1]) {
+          const ring = ellipse(L,W,H*level/p.terraces,width,40);
+          lines.push([...ring, ring[0]]);
+        }
+        for (const [x,y] of ellipse(L,W,0,width,20))
+          lines.push([[x,y,H*i/p.terraces], [x,y,H*(i+1)/p.terraces]]);
+      }
+      return lines;
+    },
+  },
+  pantheon: {
+    params: {
+      drum: percent('Drum height / height', 50, 20, 80),
+      oculus: percent('Oculus diameter / drum diameter', 20.8, 0, 65, 0.1),
+    },
+    pts(L, W, H, p) {
+      const wall = H*p.drum/100, top = p.oculus/100, angle = Math.acos(top);
+      const points = [...ellipse(L,W,0,1,12), ...ellipse(L,W,wall,1,12)];
+      for (const fraction of [0.38, 0.74]) {
+        const tilt = angle * fraction;
+        points.push(...ellipse(L,W,wall + (H-wall)*Math.sin(tilt)/Math.sin(angle), Math.cos(tilt),12));
+      }
+      return points.concat(top ? ellipse(L,W,H,top,12) : [[L/2,W/2,H]]);
+    },
+    open: horizontalCap,
+  },
+  cistern: {
+    params: {
+      sides: count('Perimeter facets', 18, 6, 24, 2),
+      top: percent('Ceiling width / floor width', 100, 40, 100),
+    },
+    pts: (L, W, H, p) => [...ellipse(L,W,0,1,p.sides), ...ellipse(L,W,H,p.top/100,p.sides)],
+  },
+  cathedral: {
+    params: {
+      apse: percent('Apse depth / length', 20, 5, 45),
+      spring: percent('Vault spring height / height', 30, 15, 75),
+      shoulder: percent('Upper nave width / floor width', 50, 30, 80),
+    },
+    pts(L, W, H, p) {
+      const depth = L*p.apse/100, wall = H*p.spring/100, rise = H-wall;
+      const profile = [[0,1], [wall,1], [wall + rise*0.76,p.shoulder/100], [wall + rise*0.93,p.shoulder/200]];
+      const points = [];
+      for (const [x, scale] of [[0,1], ...[0, Math.PI/6, Math.PI/3].map(a => [L-depth+depth*Math.sin(a), Math.cos(a)])]) {
+        for (const [z, width] of profile) {
+          const half = W*width*scale/2;
+          points.push([x,W/2-half,z], [x,W/2+half,z]);
+        }
+        points.push([x,W/2,H]);
+      }
+      return [...points, [L,W/2,0], [L,W/2,H]];
+    },
+  },
 };
+
+// Finite panels preserve folds, creases and openings in the room envelope.
+// The lower walls enclose a convex floor at piano and listener height.
+SHAPES.ribbon = {
+  params: {
+    sweep: percent('Ridge sweep / half-width', 61, -75, 75),
+    saddle: percent('Saddle depth / vault rise', 65, 0, 80),
+    position: percent('Saddle position / length', 46, 25, 75),
+    lift: percent('Opposing eave lift / vault rise', 49, 0, 70),
+    taper: percent('End narrowing / width', 44, 0, 65),
+  },
+  mesh: buildRibbonHall,
+};
+
+function buildRibbonHall(L, W, H, p, key) {
+  const mesh = new PanelMesh(), { V, edges } = mesh, stations = [];
+  const spans = 20, bays = 12, eaves = Math.max(2.5, H * 0.16);
+  let maxRise = 0;
+  for (let i = 0; i <= spans; i++) {
+    const u = i / spans, bulge = Math.sin(Math.PI * u);
+    const half = W/2 * (1 - p.taper/100 * (1-bulge));
+    const drift = p.sweep/100 * Math.sin(2*Math.PI*u);
+    const dip = Math.exp(-(((u-p.position/100)/0.17) ** 2));
+    const crown = (0.38 + 0.62*bulge) * (1 - p.saddle/100*dip);
+    const roof = [];
+    for (let j = 0; j <= bays; j++) {
+      const angle = Math.PI*j/bays, c = -Math.cos(angle);
+      // Monotone across the span even at maximum sweep; the two eaves stay put.
+      const y = W/2 + half * (c+drift)/(1+drift*c);
+      const rise = crown * Math.sin(angle);
+      roof.push(mesh.vertex(L*u, y, rise));
+      maxRise = Math.max(maxRise, rise);
+    }
+    stations.push({roof, left: mesh.vertex(L*u,W/2-half,0), right: mesh.vertex(L*u,W/2+half,0)});
+  }
+  for (let i=0; i<=spans; i++) {
+    const tilt = Math.sin(2*Math.PI*i/spans);
+    for (let j=0; j<=bays; j++) {
+      const v = V[stations[i].roof[j]];
+      const bank = p.lift/200 * (1 - Math.cos(Math.PI*j/bays)*tilt);
+      v[2] = eaves + (H-eaves) * (bank + (1-bank)*v[2]/maxRise);
+    }
+  }
+
+  const floorV = [...stations.map(s=>s.right), ...stations.map(s=>s.left).reverse()];
+  mesh.panel(floorV, 'floor');
+  for (let i = 0; i <= spans; i++) {
+    const a = stations[i];
+    if (i%2 === 0) for (let j = 0; j < bays; j++) edges.push([a.roof[j],a.roof[j+1]]);
+    if (i === 0 || i === spans) {
+      const cap = [a.left,...a.roof,a.right];
+      mesh.panel(i === 0 ? cap : cap.reverse(), 'wall');
+      edges.push([a.left,a.roof[0]], [a.right,a.roof[bays]], [a.left,a.right]);
+    }
+    if (i === spans) break;
+    const b = stations[i+1];
+    mesh.panel([a.left,b.left,b.roof[0],a.roof[0]], 'wall');
+    mesh.panel([b.right,a.right,a.roof[bays],b.roof[bays]], 'wall');
+    edges.push([a.left,b.left], [a.right,b.right]);
+    for (let j = 0; j <= bays; j++) {
+      if (j%2 === 0) edges.push([a.roof[j],b.roof[j]]);
+      if (j === bays) break;
+      mesh.splitQuad(a.roof[j], b.roof[j], b.roof[j+1], a.roof[j+1], 'roof');
+    }
+  }
+  return mesh.room(key);
+}
+
+class PanelMesh {
+  constructor() {
+    this.V = [];
+    this.faces = [];
+    this.edges = [];
+  }
+
+  vertex(x, y, z) {
+    return this.V.push([x, y, z]) - 1;
+  }
+
+  // Vertices wind counterclockwise as viewed from outside. A panel is planar and convex.
+  panel(ix, role) {
+    const { V, faces } = this;
+    const a = V[ix[0]], norm = [0,0,0];
+    for (let i = 1; i+1 < ix.length; i++) {
+      const b = V[ix[i]], c = V[ix[i+1]];
+      const ux = b[0]-a[0], uy = b[1]-a[1], uz = b[2]-a[2];
+      const vx = c[0]-a[0], vy = c[1]-a[1], vz = c[2]-a[2];
+      norm[0] += uy*vz-uz*vy; norm[1] += uz*vx-ux*vz; norm[2] += ux*vy-uy*vx;
+    }
+    const length = Math.hypot(...norm), n = norm.map(v => v/length);
+    const c = [0,1,2].map(q => ix.reduce((s,k) => s+V[k][q],0)/ix.length);
+    const bounds = [0,1,2].map(q => ix.map(k => V[k][q]));
+    // Inward edge planes provide a finite-polygon test after ray/plane intersection.
+    const sides = [];
+    for (let i = 0; i < ix.length; i++) {
+      const v = V[ix[i]], w = V[ix[(i+1)%ix.length]];
+      const x=w[0]-v[0], y=w[1]-v[1], z=w[2]-v[2];
+      const nx=n[1]*z-n[2]*y, ny=n[2]*x-n[0]*z, nz=n[0]*y-n[1]*x;
+      sides.push(nx,ny,nz,nx*v[0]+ny*v[1]+nz*v[2]);
+    }
+    faces.push({ix, n, c, id:faces.length, area:length/2, d:n[0]*a[0]+n[1]*a[1]+n[2]*a[2],
+      lo:bounds.map(v=>Math.min(...v)), hi:bounds.map(v=>Math.max(...v)),
+      sides, role, floor:role==='floor', open:role==='opening'});
+  }
+
+  splitQuad(a, b, c, d, role) {
+    this.panel([a, b, c], role);
+    this.panel([a, c, d], role);
+  }
+
+  outline(ring) {
+    ring.forEach((a, i) => this.edges.push([a, ring[(i+1) % ring.length]]));
+  }
+
+  room(key) {
+    const { V, faces, edges } = this;
+    const floorV = faces.find(f => f.floor).ix, sec = floorV.map(k => V[k].slice(0, 2));
+    const bounds = axis => [Math.min(...sec.map(p => p[axis])), Math.max(...sec.map(p => p[axis]))];
+    const vol = faces.reduce((v, f) => v + f.area*f.d/3, 0);
+    return { key, V, faces, edges, floorV, sec, vol, fx: bounds(0), fy: bounds(1),
+      shaped: true, order: 1, openC: faces.find(f => f.open)?.c,
+      walkFaces: faces.filter(f => f.role === 'wall'), tree: panelTree(faces), stack: [] };
+  }
+}
+
+// A small bounding-volume hierarchy shared by reflection visibility and the wavefront tracer.
+function panelTree(panels) {
+  const lo = [0,1,2].map(k=>Math.min(...panels.map(f=>f.lo[k])));
+  const hi = [0,1,2].map(k=>Math.max(...panels.map(f=>f.hi[k])));
+  if (panels.length <= 6) return {lo, hi, panels};
+  const spread = hi.map((v,k)=>v-lo[k]);
+  const axis = spread.indexOf(Math.max(...spread));
+  const ordered = [...panels].sort((a,b)=>a.c[axis]-b.c[axis]), half=ordered.length>>1;
+  return {lo, hi, left:panelTree(ordered.slice(0,half)), right:panelTree(ordered.slice(half))};
+}
+
+function onPanel(f,x,y,z) {
+  const e=f.sides;
+  for (let i=0; i<e.length; i+=4) if (e[i]*x+e[i+1]*y+e[i+2]*z < e[i+3]-1e-8) return false;
+  return true;
+}
+
+function nearestPanel(x,y,z, dx,dy,dz, limit, result) {
+  const stack=ROOM.stack, invX=dx ? 1/dx : 1e30, invY=dy ? 1/dy : 1e30, invZ=dz ? 1/dz : 1e30;
+  stack.length=0; stack.push(ROOM.tree);
+  let hit=null;
+  while (stack.length) {
+    const node=stack.pop(), a=node.lo, b=node.hi;
+    const x0=(a[0]-x)*invX, x1=(b[0]-x)*invX, y0=(a[1]-y)*invY, y1=(b[1]-y)*invY, z0=(a[2]-z)*invZ, z1=(b[2]-z)*invZ;
+    if (Math.max(0,Math.min(x0,x1),Math.min(y0,y1),Math.min(z0,z1)) >
+        Math.min(limit,Math.max(x0,x1),Math.max(y0,y1),Math.max(z0,z1))+1e-8) continue;
+    if (!node.panels) { stack.push(node.left,node.right); continue; }
+    for (const f of node.panels) {
+      const n=f.n, den=n[0]*dx+n[1]*dy+n[2]*dz;
+      if (den <= 1e-10) continue; // first exit from the interior
+      const t=(f.d-n[0]*x-n[1]*y-n[2]*z)/den;
+      if (t<=1e-7 || t>=limit || !onPanel(f,x+t*dx,y+t*dy,z+t*dz)) continue;
+      limit=t; hit=f;
+    }
+  }
+  if (hit && result) result.distance=limit;
+  return hit;
+}
+
+function clearSegment(a,b) {
+  const dx=b[0]-a[0], dy=b[1]-a[1], dz=b[2]-a[2], len=Math.hypot(dx,dy,dz);
+  return len < 1e-6 || !nearestPanel(...a,dx/len,dy/len,dz/len,len-1e-6);
+}
+
+function ribbonImages(src, head, dmax) {
+  const cached = ROOM.echoPaths;
+  if (cached && cached.x===src[0] && cached.y===src[1] && cached.z===src[2] &&
+      cached.hx===head[0] && cached.hy===head[1] && cached.hz===head[2]) {
+    return dmax ? cached.images.filter(im=>Math.hypot(im.x-head[0],im.y-head[1],im.z-head[2])<=dmax+1) : cached.images;
+  }
+  const result=[{x:src[0],y:src[1],z:src[2],o:0,g:1}];
+  for (const f of ROOM.faces) {
+    if (f.open) continue;
+    const n=f.n, sd=n[0]*src[0]+n[1]*src[1]+n[2]*src[2]-f.d;
+    if (sd >= 0) continue;
+    const x=src[0]-2*sd*n[0], y=src[1]-2*sd*n[1], z=src[2]-2*sd*n[2];
+    const dx=head[0]-x, dy=head[1]-y, dz=head[2]-z;
+
+    const t=sd/(n[0]*dx+n[1]*dy+n[2]*dz);
+    if (!(t>0 && t<1)) continue;
+    const h=[x+t*dx,y+t*dy,z+t*dz];
+    if (!onPanel(f,...h) || !clearSegment(src,h) || !clearSegment(head,h)) continue;
+    if (result.some(im=>Math.abs(im.x-x)+Math.abs(im.y-y)+Math.abs(im.z-z)<1e-6)) continue;
+    result.push({x,y,z,o:1,g:1,hit:h,face:f});
+  }
+  ROOM.echoPaths={x:src[0],y:src[1],z:src[2],hx:head[0],hy:head[1],hz:head[2],images:result};
+  return dmax ? result.filter(im=>Math.hypot(im.x-head[0],im.y-head[1],im.z-head[2])<=dmax+1) : result;
+}
+
+// Only the distance changes when the next video frame redraws the same ray.
+// Cache its segments up to the maximum displayed travel distance.
+function ribbonRay(src,dx,dy,dz) {
+  let [x,y,z]=src, start=0, sig=0;
+  const segments=[], hit={distance:0};
+  for (let i=0; i<=6; i++) {
+    const f=nearestPanel(x,y,z,dx,dy,dz,C-start,hit);
+    const end=f ? start+hit.distance : C;
+    segments.push({x,y,z,dx,dy,dz,start,end,sig});
+    if (!f || f.open) break;
+    x+=dx*hit.distance; y+=dy*hit.distance; z+=dz*hit.distance;
+    const n=f.n, dot=2*(n[0]*dx+n[1]*dy+n[2]*dz);
+    dx-=dot*n[0]; dy-=dot*n[1]; dz-=dot*n[2];
+    sig=(sig*541+f.id+1)%1e12;
+    start=end;
+  }
+  return segments;
+}
+
+function pointAlongRay(ray,r,q) {
+  for (let i=0; i<ray.length; i++) {
+    const s=ray[i];
+    if (r>s.end) continue;
+    const t=r-s.start;
+    q[0]=s.x+t*s.dx; q[1]=s.y+t*s.dy; q[2]=s.z+t*s.dz;
+    TSIG=s.sig;
+    return i;
+  }
+  return -1;
+}
+
+function traceRibbon(src,dx,dy,dz,r,q) {
+  return pointAlongRay(ribbonRay(src,dx,dy,dz),r,q);
+}
+
+function wavePoint(src,directions,i,r,q) {
+  const k=3*i;
+  if (!ROOM.tree) return tracePt(src,directions[k],directions[k+1],directions[k+2],r,q);
+  let cache=ROOM.waveCache;
+  if (!cache || cache.x!==src[0] || cache.y!==src[1] || cache.z!==src[2]) {
+    cache=ROOM.waveCache={x:src[0],y:src[1],z:src[2],bundles:new Map()};
+  }
+  let rays=cache.bundles.get(directions);
+  if (!rays) { rays=[]; cache.bundles.set(directions,rays); }
+  if (!rays[i]) rays[i]=ribbonRay(src,directions[k],directions[k+1],directions[k+2]);
+  return pointAlongRay(rays[i],r,q);
+}
+
+function drawPanelSurfaces(g, projected, eye) {
+  const tone = SHAPES[S.shape].tone || [1, 1, 1];
+  const surfaces = [];
+  for (const face of ROOM.faces) {
+    if (face.floor || face.open) continue;
+    const points = face.ix.map(k => projected[k]);
+    if (points.every(Boolean)) {
+      surfaces.push({face, points, depth: points.reduce((v, p) => v + p[2], 0)/points.length});
+    }
+  }
+  surfaces.sort((a, b) => b.depth - a.depth);
+  for (const {face, points} of surfaces) {
+    const {n, c} = face;
+    const front = n[0]*(eye[0]-c[0]) + n[1]*(eye[1]-c[1]) + n[2]*(eye[2]-c[2]) > 0;
+    if (face.role === 'wall') {
+      g.fillStyle = front ? 'rgba(109,177,190,0.08)' : 'rgba(118,176,190,0.24)';
+    } else {
+      const light = Math.max(0, Math.min(1, 0.41 + 0.22*n[0] - 0.44*n[1] + 0.51*n[2]));
+      const value = 66 + 171*light;
+      const rgb = [value, value+13, value+19].map((v, i) => Math.min(250, Math.round(v*tone[i])));
+      g.fillStyle = 'rgba('+rgb.join(',')+','+(front ? 0.58 : 0.52)+')';
+    }
+    poly(g, points, true); g.fill();
+  }
+}
+
+// The horizontal ray family stays at piano height, below the lowest eave.
+const sliceRays = new Float64Array(3*320);
+for (let i=0;i<320;i++) {
+  const theta=2*Math.PI*i/320;
+  sliceRays[3*i]=Math.cos(theta);
+  sliceRays[3*i+1]=Math.sin(theta);
+}
+function drawRibbonSlice(g,ev,src,r,beta,fade) {
+  let prev=null, prevSignature=-1;
+  const paths=[new Path2D(),new Path2D(),new Path2D()], q=[0,0,0];
+  for (let i=0;i<=320;i++) {
+    const order=wavePoint(src,sliceRays,i%320,r,q);
+    const point=order<0 ? null : proj(...q);
+    if (point && prev && TSIG===prevSignature) {
+      const path=paths[Math.min(2,order)];
+      path.moveTo(prev[0],prev[1]); path.lineTo(point[0],point[1]);
+    }
+    prev=point; prevSignature=TSIG;
+  }
+  for (const [i,color] of ['246,214,150','127,227,216','168,160,255'].entries()) {
+    g.strokeStyle='rgba('+color+','+Math.min(0.95,ev.amp*fade*beta**i)+')';
+    g.lineWidth=ev.big?1.5:1; g.stroke(paths[i]);
+  }
+}
+
+const degrees = (label, value, min, max) => ({ label, value, min, max, step: 1, unit: '°' });
+
+SHAPES.petal = {
+  params: {
+    petals: count('Roof petals', 5, 3, 8),
+    oculus: percent('Oculus diameter / span', 26, 0, 55),
+    relief: percent('Petal groove depth / roof rise', 74, 0, 85),
+    curl: degrees('Petal rotation toward oculus', 28, -45, 45),
+  },
+  mesh: buildPetalAtrium,
+};
+
+SHAPES.fan = {
+  params: {
+    folds: count('Roof folds', 5, 2, 9),
+    stage: percent('Stage width / rear width', 30, 20, 100),
+    depth: percent('Fold depth / roof rise', 66, 0, 85),
+    rake: percent('Valley rise toward rear', 65, 0, 95),
+  },
+  tone: [1.05, 0.89, 0.71],
+  mesh: buildFoldedFan,
+};
+
+SHAPES.lantern = {
+  params: {
+    twist: degrees('Twist from base to crown', 108, -150, 150),
+    sides: count('Sides of each section', 3, 3, 6),
+    crown: percent('Crown width / base width', 76, 45, 100),
+    rounding: percent('Corner rounding / side length', 18, 5, 45),
+  },
+  tone: [0.91, 0.87, 1.06],
+  mesh: buildSpiralLantern,
+};
+
+function buildPetalAtrium(L, W, H, p, key) {
+  const mesh = new PanelMesh(), rings = [];
+  const bands = 6, sectors = 8*p.petals;
+  const opening = p.oculus/100, collar = SHAPES.petal.params.oculus.max/100, curl = p.curl*Math.PI/180;
+  const base = Math.max(2.5, 0.12*H), rise = H-base;
+  // Crests peak halfway out. Their angular position turns as the radius changes.
+  for (let band = 0; band <= bands; band++) {
+    const t = band/bands, radius = collar + (1-collar)*t;
+    const arch = Math.sin(Math.PI*t);
+    const crest = t <= 0.5 ? 0.67 + 0.33*arch : 0.38 + 0.62*arch;
+    const groove = (0.82*arch + 0.40*t)*p.relief/100;
+    const ring = [];
+    for (let i = 0; i < sectors; i++) {
+      const angle = 2*Math.PI*i/sectors, azimuth = angle + curl*(1-t);
+      const valley = (1-Math.cos(p.petals*angle))/2;
+      ring.push(mesh.vertex(L/2*(1+radius*Math.cos(azimuth)), W/2*(1+radius*Math.sin(azimuth)),
+        base + rise*(crest - groove*valley)));
+    }
+    rings.push(ring);
+  }
+  // Blades fill the flat collar up to the aperture. Opening it changes
+  // the escape area while the enclosing volume and outer petals stay fixed.
+  const lip = rings[0], eaves = rings[rings.length-1];
+  mesh.outline(lip);
+  if (opening === 0) mesh.panel(lip, 'roof');
+  else if (opening === collar) mesh.panel(lip, 'opening');
+  else {
+    const inner = lip.map(k => {
+      const [x,y,z] = mesh.V[k], ratio = opening/collar;
+      return mesh.vertex(L/2 + (x-L/2)*ratio, W/2 + (y-W/2)*ratio, z);
+    });
+    mesh.panel(inner, 'opening');
+    mesh.outline(inner);
+    for (let i = 0; i < sectors; i++) {
+      const next = (i+1)%sectors;
+      mesh.panel([inner[i], lip[i], lip[next], inner[next]], 'roof');
+      if (i%8 === 0) mesh.edges.push([inner[i], lip[i]]);
+    }
+  }
+  for (let band = 1; band < rings.length; band++) {
+    const inner = rings[band-1], outer = rings[band];
+    for (let i = 0; i < sectors; i++) {
+      const next = (i+1)%sectors;
+      mesh.splitQuad(inner[i], outer[i], outer[next], inner[next], 'roof');
+      if (i%4 === 0) mesh.edges.push([inner[i], outer[i]]);
+    }
+  }
+  const floor = eaves.map(k => mesh.vertex(mesh.V[k][0], mesh.V[k][1], 0));
+  for (let i = 0; i < sectors; i++) {
+    const next = (i+1)%sectors;
+    mesh.panel([floor[i], floor[next], eaves[next], eaves[i]], 'wall');
+    if (i%4 === 0) mesh.edges.push([floor[i], eaves[i]]);
+  }
+  mesh.outline(floor);
+  mesh.outline(eaves);
+  mesh.panel(floor.reverse(), 'floor');
+  return mesh.room(key);
+}
+
+function buildFoldedFan(L, W, H, p, key) {
+  const mesh = new PanelMesh(), last = 2*p.folds;
+  const base = Math.max(2.5, H*0.18), rise = H-base, depth = p.depth/100;
+  function section(u) {
+    const width = p.stage/100 + (1-p.stage/100)*u;
+    const valley = base + rise*(1-depth)*(1 - p.rake/100*(1-u));
+    const floor = [], roof = [];
+    for (let j = 0; j <= last; j++) {
+      const y = W*(0.5 + width*(j/last - 0.5));
+      floor.push(mesh.vertex(L*u, y, 0));
+      roof.push(mesh.vertex(L*u, y, valley + (j%2)*rise*depth*width));
+    }
+    return {floor, roof};
+  }
+  const front = section(0), back = section(1);
+  for (let j = 0; j < last; j++) {
+    const k = j+1;
+    // Fold height and bay width increase in proportion, so each roof plate is planar.
+    mesh.panel([front.roof[j], back.roof[j], back.roof[k], front.roof[k]], 'roof');
+    mesh.panel([front.floor[k], front.floor[j], front.roof[j], front.roof[k]], 'wall');
+    mesh.panel([back.floor[j], back.floor[k], back.roof[k], back.roof[j]], 'wall');
+    mesh.edges.push([front.roof[j], front.roof[k]], [back.roof[j], back.roof[k]]);
+  }
+  for (let j = 0; j <= last; j++) mesh.edges.push([front.roof[j], back.roof[j]]);
+  mesh.panel([front.floor[0], back.floor[0], back.roof[0], front.roof[0]], 'wall');
+  mesh.panel([back.floor[last], front.floor[last], front.roof[last], back.roof[last]], 'wall');
+  for (const end of [front, back]) {
+    mesh.edges.push([end.floor[0], end.roof[0]], [end.floor[last], end.roof[last]]);
+  }
+  const floor = front.floor.concat([...back.floor].reverse());
+  mesh.outline(floor);
+  mesh.panel(floor, 'floor');
+  return mesh.room(key);
+}
+
+function buildSpiralLantern(L, W, H, p, key) {
+  const mesh = new PanelMesh(), section = [], rings = [];
+  const corners = Array.from({ length: p.sides }, (_, i) => {
+    const a = 2*Math.PI*i/p.sides - Math.PI/2;
+    return [Math.cos(a), Math.sin(a)];
+  });
+  const fillet = p.rounding/100, samplesPerSide = 9;
+  for (let i = 0; i < corners.length; i++) {
+    const v = corners[i], prev = corners[(i+p.sides-1)%p.sides], next = corners[(i+1)%p.sides];
+    // A quadratic curve rounds each corner and joins both straight sides tangentially.
+    for (let k = 0; k <= 4; k++) {
+      const t = k/4;
+      section.push(v.map((a, axis) => a + fillet*((1-t)**2*(prev[axis]-a) + t*t*(next[axis]-a))));
+    }
+    // Subdivide each straight side too. Its surface curves as the section rotates.
+    for (let k = 1; k <= 4; k++) {
+      const t = fillet + (1-2*fillet)*k/5;
+      section.push(v.map((a, axis) => a + t*(next[axis]-a)));
+    }
+  }
+  const base = Math.max(2.5, H*0.09), tiers = 12;
+  const floor = section.map(([x,y]) => mesh.vertex(x, y, 0));
+  for (let tier = 0; tier <= tiers; tier++) {
+    const t = tier/tiers, angle = p.twist*Math.PI/180*t;
+    const radius = 1 + (p.crown/100-1)*t;
+    rings.push(section.map(([x,y]) => mesh.vertex(
+      radius*(x*Math.cos(angle)-y*Math.sin(angle)),
+      radius*(x*Math.sin(angle)+y*Math.cos(angle)), base + (H-base)*t)));
+  }
+  // Fit the entire twisting envelope to the requested dimensions before measuring the faces.
+  for (const [axis, span] of [L, W].entries()) {
+    const values = mesh.V.map(v => v[axis]), low = Math.min(...values), high = Math.max(...values);
+    for (const v of mesh.V) v[axis] = span*(v[axis]-low)/(high-low);
+  }
+  mesh.panel([...floor].reverse(), 'floor');
+  mesh.outline(floor);
+  for (let tier = 0; tier <= tiers; tier++) {
+    const low = tier === 0 ? floor : rings[tier-1], high = rings[tier];
+    for (let i = 0; i < section.length; i++) {
+      const next = (i+1)%section.length;
+      if (tier === 0) mesh.panel([low[i], low[next], high[next], high[i]], 'wall');
+      else mesh.splitQuad(low[i], low[next], high[next], high[i], 'shell');
+      if (i%samplesPerSide === 0 || i%samplesPerSide === 4) mesh.edges.push([low[i], high[i]]);
+    }
+    if (tier%3 === 0) mesh.outline(high);
+  }
+  mesh.panel(rings[tiers], 'roof');
+  return mesh.room(key);
+}
+
 const SOLID = [1, 1, 1, 1, 1, 1];
 // gain of an image source (or a folded wavefront point) in room copy c along one axis: c bounces shared between
 // the wall at 0 and the wall at Lx, each surface counted with its own "how much is there" factor
 const axisGain = (c, r0, rL) => { if (!c || (r0 === 1 && rL === 1)) return 1; const a = Math.abs(c), h0 = c > 0 ? a >> 1 : (a + 1) >> 1, hL = a - h0; return (h0 ? Math.pow(r0, h0) : 1) * (hL ? Math.pow(rL, hL) : 1); };
 const MAXL = 100, MAXW = 50;
-const S = { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21], pz: 1.2, ez: 1.6, ear: 0.09, face: Math.PI, refl: SOLID, early: 0.2, tail: 1, openName: '', shape: null };
+const S = { L: 90, W: 40, H: 30, A: 49, piano: [10, 20], seat: [42, 21], pz: 1.2, ez: 1.6, ear: 0.09, face: Math.PI, refl: SOLID, early: 0.2, tail: 1, openName: '', shape: null, preset: 'marble', params: {} };
 // facing angle in plan coordinates (y points down the screen); your left ear is 90° anticlockwise on screen
 const leftVec = th => [Math.sin(th), -Math.cos(th)];
 const facePiano = () => { S.face = Math.atan2(S.piano[1] - S.seat[1], S.piano[0] - S.seat[0]); };
@@ -349,11 +1010,35 @@ const MATERIALS = [['Marble', 0.02], ['Plaster', 0.10], ['Wood', 0.18], ['Seats'
   .map(([name, al]) => ({ name, al, pos: sliderOf(al) }));
 const materialAt = v => MATERIALS.reduce((b, m) => Math.abs(m.pos - v) < Math.abs(b.pos - v) ? m : b);
 // ---------- the room as a solid ------------------------------------------------
-// ROOM = eight corners (floor 0-3, top 4-7) and six flat faces with outward normals, for boxes and shaped rooms alike.
+// Only the outer boundary of coplanar samples contributes to a face's area and edges.
+function faceBoundary(points, indices, normal) {
+  const drop = normal.map(Math.abs).indexOf(Math.max(...normal.map(Math.abs)));
+  const x = (drop + 1) % 3, y = (drop + 2) % 3;
+  indices.sort((a, b) => points[a][x] - points[b][x] || points[a][y] - points[b][y]);
+  function chain(order) {
+    const hull = [];
+    for (const i of order) {
+      while (hull.length >= 2) {
+        const a = points[hull[hull.length-2]], b = points[hull[hull.length-1]], c = points[i];
+        const turn = (b[x]-a[x])*(c[y]-a[y]) - (b[y]-a[y])*(c[x]-a[x]);
+        if (turn > 1e-9) break;
+        hull.pop();
+      }
+      hull.push(i);
+    }
+    return hull.slice(0, -1);
+  }
+  return [...chain(indices), ...chain([...indices].reverse())];
+}
+
 let ROOM = null;
 function buildRoom() {
-  const { L, W, H } = S, key = [L, W, H, S.shape].join(','); if (ROOM && ROOM.key === key) return;
-  const sh = S.shape ? SHAPES[S.shape] : null, V = sh ? sh.pts(L, W, H) : [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0], [0, 0, H], [L, 0, H], [L, W, H], [0, W, H]];
+  const { L, W, H, params } = S, key = JSON.stringify([L, W, H, S.shape, params]);
+  if (ROOM && ROOM.key === key) return;
+  const sh = S.shape ? SHAPES[S.shape] : null;
+  if (S.shape && !sh) throw new Error('Missing architecture for ' + S.shape);
+  if (sh?.mesh) { ROOM = sh.mesh(L, W, H, params, key); return; }
+  const V = sh ? sh.pts(L, W, H, params) : [0, H].flatMap(z => rectangle(L,W).map(([x,y]) => [x,y,z]));
   // faces of the convex solid around the points: every plane through three points that has all the others on one side
   const N = V.length, eps = 1e-6 * Math.max(L, W, H), faces = [];
   for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) for (let k = j + 1; k < N; k++) {
@@ -364,10 +1049,13 @@ function buildRoom() {
     if (pos && neg) continue;
     if (pos) { n = n.map(x => -x); d = -d; }
     if (faces.some(f => f.n[0] * n[0] + f.n[1] * n[1] + f.n[2] * n[2] > 1 - 1e-9 && Math.abs(f.d - d) < 20 * eps)) continue;
-    const ix = []; for (let m = 0; m < N; m++) if (Math.abs(n[0] * V[m][0] + n[1] * V[m][1] + n[2] * V[m][2] - d) < 20 * eps) ix.push(m);
-    const cen = [0, 1, 2].map(q => ix.reduce((t, m) => t + V[m][q], 0) / ix.length), e1 = [0, 1, 2].map(q => V[ix[0]][q] - cen[q]), e2 = [n[1] * e1[2] - n[2] * e1[1], n[2] * e1[0] - n[0] * e1[2], n[0] * e1[1] - n[1] * e1[0]];
-    const ang = m => Math.atan2((V[m][0] - cen[0]) * e2[0] + (V[m][1] - cen[1]) * e2[1] + (V[m][2] - cen[2]) * e2[2], (V[m][0] - cen[0]) * e1[0] + (V[m][1] - cen[1]) * e1[1] + (V[m][2] - cen[2]) * e1[2]);
-    ix.sort((p, q) => ang(p) - ang(q));
+    const coplanar = [];
+    for (let m = 0; m < N; m++) {
+      if (Math.abs(n[0]*V[m][0] + n[1]*V[m][1] + n[2]*V[m][2] - d) < eps) coplanar.push(m);
+    }
+    const ix = faceBoundary(V, coplanar, n);
+    if (ix.length < 3) continue;
+    const cen = [0, 1, 2].map(q => ix.reduce((sum, m) => sum + V[m][q], 0) / ix.length);
     let area = 0; for (let m = 1; m + 1 < ix.length; m++) { const p = V[ix[0]], q = V[ix[m]], r = V[ix[m + 1]]; area += Math.hypot((q[1] - p[1]) * (r[2] - p[2]) - (q[2] - p[2]) * (r[1] - p[1]), (q[2] - p[2]) * (r[0] - p[0]) - (q[0] - p[0]) * (r[2] - p[2]), (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) / 2; }
     faces.push({ ix, n, d, c: cen, area, floor: n[2] < -0.999 && Math.abs(d) < 1e-6, open: !!(sh && sh.open && sh.open(n)) });
   }
@@ -377,12 +1065,12 @@ function buildRoom() {
   const mc = [0, 1].map(q => cut.reduce((t, p) => t + p[q], 0) / (cut.length || 1)); cut.sort((p, q) => Math.atan2(p[1] - mc[1], p[0] - mc[0]) - Math.atan2(q[1] - mc[1], q[0] - mc[0]));
   const op = faces.filter(f => f.open), openC = op.length ? [0, 1, 2].map(q => op.reduce((t, f) => t + f.c[q] * f.area, 0) / op.reduce((t, f) => t + f.area, 0)) : null;
   const pl = new Float64Array(4 * faces.length); faces.forEach((f, i) => pl.set([f.n[0], f.n[1], f.n[2], f.d], 4 * i));
-  const decor = sh && sh.decor ? sh.decor(L, W, H) : null, gm = sh && sh.ground ? sh.ground * Math.max(L, W) : 0;
+  const decor = sh && sh.decor ? sh.decor(L, W, H, params) : null, gm = sh && sh.ground ? sh.ground * Math.max(L, W) : 0;
   ROOM = { key, V, faces, pl, edges, floorV, decor, gm, sec: cut, openC, vol: faces.reduce((t, f) => t + f.area * f.d, 0) / 3, shaped: !!sh, fx: [Math.min(...fxs), Math.max(...fxs)], fy: [Math.min(...fys), Math.max(...fys)], order: faces.length <= 8 ? 5 : faces.length <= 22 ? 3 : 2 };
 }
 // keep a point inside the room at height z, a margin away from every wall: slide it toward the middle of the floor
 function pullInside(pt, z, m) {
-  const F = ROOM.faces, cx = (ROOM.fx[0] + ROOM.fx[1]) / 2, cy = (ROOM.fy[0] + ROOM.fy[1]) / 2;
+  const F = ROOM.walkFaces || ROOM.faces, cx = (ROOM.fx[0] + ROOM.fx[1]) / 2, cy = (ROOM.fy[0] + ROOM.fy[1]) / 2;
   for (let it = 0; it < 60; it++) {
     let ok = true; for (let k = 0; k < F.length; k++) { const f = F[k]; if (f.n[0] * pt[0] + f.n[1] * pt[1] + f.n[2] * z - f.d > -m) { ok = false; break; } }
     if (ok) return; pt[0] += (cx - pt[0]) * 0.06; pt[1] += (cy - pt[1]) * 0.06;
@@ -396,6 +1084,7 @@ function danceEllipse() {
 // Image sources of a shaped (convex) room: mirror the source in each wall, then mirror those images again, and keep an
 // image for the listener only if its path really touches each wall inside that wall's outline.
 function imagesShape(src, maxOrder, dmax, head) {
+  if (ROOM.tree) return ribbonImages(src, head || [...S.seat,S.ez], dmax);
   const F = ROOM.faces, NF = F.length, out = [{ x: src[0], y: src[1], z: src[2], o: 0, g: 1 }], chain = [src], seq = []; maxOrder = Math.min(maxOrder, ROOM.order);
   const valid = img => {
     let tg = head;
@@ -429,6 +1118,7 @@ function imagesShape(src, maxOrder, dmax, head) {
 // Returns the number of bounces (-1 if it left through an opening or bounced too often); TSIG names the walls hit.
 let TSIG = 0;
 function tracePt(src, dx, dy, dz, r, q) {
+  if (ROOM.tree) return traceRibbon(src, dx, dy, dz, r, q);
   const F = ROOM.faces, A = ROOM.pl, NF = F.length; let px = src[0], py = src[1], pz = src[2], rem = r, b = 0; TSIG = 0;
   for (;;) {
     let tmin = Infinity, km = -1;
@@ -509,7 +1199,7 @@ function buildTail(sr) {
   TAIL = { ch, E: E / 2, sr, key: tailKey(sr), ac };
   return TAIL;
 }
-const tailKey = sr => [S.L, S.W, S.H, S.A, sr, S.tail, S.refl.join(''), S.shape].join(',');
+const tailKey = sr => [S.L, S.W, S.H, S.A, sr, S.tail, S.refl.join(''), ROOM.key].join(',');
 function buildEarly(sr) {
   if (!TAIL || TAIL.key !== tailKey(sr)) buildTail(sr);
   const ac = TAIL.ac, rt = ac.rt;
@@ -566,11 +1256,13 @@ function buildIR(sr) {
 
 // ---------- audio -----------------------------------------------------------
 let ctx, buf, srcNode = null, playing = false, offset = 0, startAt = 0;
-let input, dryG, wetBus, convs = [], convG = [], active = 0, anDry, anWet, master;
+let input, dryG, movingDryG, wetBus, convs = [], convG = [], active = 0, anDry, anWet, master;
 let tailConvs = [], tailG = [], tailActive = 0, tailDelay, tailNorm, tailKeyLive = null;
+const tailDisconnect = [];
 let earlyDelay, dirDelay = [], dirGain = [], nextSwap = 0, swapTimer = null; const NCONV = 6;
 let musicGate;
 function setupAudio() {
+  const passPhase = listenerPass ? phaseAt(listenerPass, motionClock()) : 0;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   input = ctx.createGain(); dryG = ctx.createGain(); wetBus = ctx.createGain(); master = ctx.createGain();
   musicGate = ctx.createGain(); musicGate.connect(input);          // the hologram's flicker cuts the music here
@@ -579,7 +1271,15 @@ function setupAudio() {
   input.connect(anDry); input.connect(dryG); dryG.connect(master);
   // direct sound: one delay + gain per ear, moved smoothly, so turning your head or stepping never swaps anything
   const merge = ctx.createChannelMerger(2); merge.connect(wetBus);
-  for (let e = 0; e < 2; e++) { const d = ctx.createDelay(1.0), g = ctx.createGain(); g.gain.value = 0; input.connect(d); d.connect(g); g.connect(merge, 0, e); dirDelay.push(d); dirGain.push(g); }
+  // With room sound off, the moving listener still receives the direct wave at each ear.
+  const movingDry = ctx.createChannelMerger(2);
+  movingDryG = ctx.createGain(); movingDryG.gain.value = 0;
+  movingDry.connect(movingDryG); movingDryG.connect(master);
+  for (let e = 0; e < 2; e++) {
+    const d = ctx.createDelay(1.0), g = ctx.createGain();
+    g.gain.value = 0; input.connect(d); d.connect(g); g.connect(merge, 0, e);
+    d.connect(movingDry, 0, e); dirDelay.push(d); dirGain.push(g);
+  }
   // early reflections: short convolvers in rotation, all fed all the time through one delay (your distance to the piano).
   // A convolver forgets what it has heard when its response is replaced, so a new one runs silently until it has
   // refilled, and only then is it faded in.
@@ -591,6 +1291,11 @@ function setupAudio() {
   for (let i = 0; i < 2; i++) { const c = ctx.createConvolver(); c.normalize = false; const g = ctx.createGain(); g.gain.value = 0; c.connect(g); g.connect(tailNorm); tailConvs.push(c); tailG.push(g); }
   tailNorm.connect(wetBus);
   wetBus.connect(master); master.connect(anWet); anWet.connect(ctx.destination);
+  if (listenerPass) {
+    listenerPass.phase = passPhase;
+    listenerPass.epoch = ctx.currentTime;
+    configurePassDelays();
+  }
   applyRoomToggle(); rebuildAudioIR();
 }
 const toBuffer = ch => { const b = ctx.createBuffer(2, ch[0].length, ctx.sampleRate); b.copyToChannel(ch[0], 0); b.copyToChannel(ch[1], 1); return b; };
@@ -604,19 +1309,22 @@ function rebuildAudioIR() {
   // tail: swap only when the room itself changed; the idle convolver is disconnected so it costs nothing
   if (tailKeyLive !== TAIL.key) {
     const next = 1 - tailActive, prev = tailActive;
+    clearTimeout(tailDisconnect[next]);
     tailConvs[next].buffer = toBuffer(TAIL.ch);
     try { tailDelay.connect(tailConvs[next]); } catch (e) {}
     hold(tailG[prev].gain, t); tailG[prev].gain.setTargetAtTime(0, t, 0.08);
     hold(tailG[next].gain, t); tailG[next].gain.setValueAtTime(0, t); tailG[next].gain.setTargetAtTime(1, t + 0.005, 0.08);
-    if (tailKeyLive !== null) setTimeout(() => { try { tailDelay.disconnect(tailConvs[prev]); } catch (e) {} }, 700);
+    if (tailKeyLive !== null) tailDisconnect[prev] = setTimeout(() => { try { tailDelay.disconnect(tailConvs[prev]); } catch (e) {} }, 700);
     tailActive = next; tailKeyLive = TAIL.key;
   }
-  hold(tailDelay.delayTime, t); tailDelay.delayTime.setTargetAtTime(Math.min(0.99, IRSTATS.t0), t, tau * 2);
   hold(tailNorm.gain, t); tailNorm.gain.setTargetAtTime(IRSTATS.norm, t, tau);
-  // direct sound and the reflections' common delay follow every update
   const st = IRSTATS;
-  for (let e = 0; e < 2; e++) { dirDelay[e].delayTime.setTargetAtTime(Math.min(0.99, st.dir.d[e] / C), t, 0.012); dirGain[e].gain.setTargetAtTime(st.dir.g[e], t, 0.012); }
-  earlyDelay.delayTime.setTargetAtTime(Math.min(0.99, st.shift), t, tau * 2);
+  for (let e = 0; e < 2; e++) dirGain[e].gain.setTargetAtTime(st.dir.g[e], t, 0.012);
+  if (!delayLoop) {
+    for (let e = 0; e < 2; e++) dirDelay[e].delayTime.setTargetAtTime(Math.min(0.99, st.dir.d[e] / C), t, 0.012);
+    hold(tailDelay.delayTime, t); tailDelay.delayTime.setTargetAtTime(Math.min(0.99, st.t0), t, tau * 2);
+    earlyDelay.delayTime.setTargetAtTime(Math.min(0.99, st.shift), t, tau * 2);
+  }
   // reflections: at most one new response every 100 ms; it warms up for its own length, then crossfades in
   if (t < nextSwap) { clearTimeout(swapTimer); swapTimer = setTimeout(rebuildAudioIR, (nextSwap - t) * 1000 + 5); return; }
   nextSwap = t + 0.1;
@@ -631,7 +1339,10 @@ function hold(p, t) { if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else 
 function applyRoomToggle() {
   if (!ctx) return;
   const on = $('roomOn').checked, t = ctx.currentTime;
-  dryG.gain.setTargetAtTime(on ? 0 : 1, t, 0.05); wetBus.gain.setTargetAtTime(on ? 1 : 0, t, 0.05);
+  const moving = $('dopplerOn').checked;
+  dryG.gain.setTargetAtTime(!on && !moving ? 1 : 0, t, 0.05);
+  movingDryG.gain.setTargetAtTime(!on && moving ? 1 : 0, t, 0.05);
+  wetBus.gain.setTargetAtTime(on ? 1 : 0, t, 0.05);
 }
 const now = () => playing ? ctx.currentTime - startAt + offset : offset;
 function play() {
@@ -674,14 +1385,20 @@ function layout() {
 // World: x along the length, y across, z up (metres). Rendered with y mirrored so that the model's "left ear"
 // (leftVec) is on the listener's left as you look at them. A simple orbit camera, perspective projection,
 // painter's order; no WebGL needed for a few hundred lines a frame.
-const CAM = { yaw: 0.55, pitch: 0.42, zoom: 1, top: false, tgt: null };
+const homeView = { yaw: 0.55, pitch: 0.42, zoom: 1, fit: false, top: false, tgt: null };
+const CAM = {...homeView};
+function resetRoomView() {
+  Object.assign(CAM, homeView, PRESETS[S.preset].view);
+  $('v3d').checked = true;
+}
 let VIEW = null, LAY = null;
 function measureLayout() { LAY = { at: performance.now(), side: window.innerWidth > 900 ? document.querySelector('.side').getBoundingClientRect().width + 30 : 0, top: document.querySelector('.controls').getBoundingClientRect().bottom, dock: document.querySelector('.dock').getBoundingClientRect().top }; }
 function setupView() {
   const fight = dance() === 'fight', diag = Math.hypot(S.L, S.W, S.H);
+  const fit = CAM.fit && !fight;
   const want = fight && FG.c ? [FG.c[0], FG.c[1], 1.2] : [S.L / 2, S.W / 2, CAM.top ? 0 : S.H * 0.22];
   CAM.tgt = CAM.tgt ? CAM.tgt.map((v, i) => v + (want[i] - v) * 0.08) : want;
-  const d = (fight ? 0.7 : CAM.top ? 1.15 : 1.3) * diag * CAM.zoom, pitch = CAM.top ? Math.PI / 2 - 1e-4 : CAM.pitch, yaw = CAM.top ? -Math.PI / 2 : CAM.yaw;
+  const d = (fight ? 0.7 : CAM.top ? 1.15 : 1.3) * diag * (fit ? 1 : CAM.zoom), pitch = CAM.top ? Math.PI / 2 - 1e-4 : CAM.pitch, yaw = CAM.top ? -Math.PI / 2 : CAM.yaw;
   const t = [CAM.tgt[0], -CAM.tgt[1], CAM.tgt[2]];
   const eye = [t[0] + d * Math.cos(pitch) * Math.cos(yaw), t[1] + d * Math.cos(pitch) * Math.sin(yaw), t[2] + d * Math.sin(pitch)];
   const f = [t[0] - eye[0], t[1] - eye[1], t[2] - eye[2]], fl = Math.hypot(...f); f[0] /= fl; f[1] /= fl; f[2] /= fl;
@@ -690,9 +1407,31 @@ function setupView() {
   if (!LAY || performance.now() - LAY.at > 300) measureLayout();
   const side = LAY.side;
   // the free area: below the controls, left of the side panels, above the dock (when they are on screen)
-  const top = Math.max(0, Math.min(P.h * 0.6, LAY.top)), bot = side && LAY.dock < P.h ? Math.max(top + 200, LAY.dock) : P.h;
+  const topLimit = fit ? P.h-140 : P.h*0.6;
+  const top = Math.max(0, Math.min(topLimit, LAY.top)), bot = side && LAY.dock < P.h ? Math.max(top + 200, LAY.dock) : P.h;
   const cx = (P.w - side) / 2, cy = (top + bot) / 2, F = Math.min(P.w - side, (bot - top) * 1.5) * 1.0;
-  VIEW = { eye, f, r, u, cx, cy, F };
+  VIEW = { eye, f, r, u, cx, cy, F, fit, width: P.w-side, height: bot-top };
+}
+
+// Fit the projected silhouette between the controls and panels. Apply the same
+// camera change to subsequent projections and screen-to-floor picking.
+function frameStudy(points) {
+  let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+  for (const p of points) {
+    if (!p) continue;
+    left = Math.min(left, p[0]); right = Math.max(right, p[0]);
+    top = Math.min(top, p[1]); bottom = Math.max(bottom, p[1]);
+  }
+  if (left >= right || top >= bottom) return;
+  const { cx, cy, width, height } = VIEW, x = (left+right)/2, y = (top+bottom)/2;
+  const scale = 0.84 * Math.min(width/(right-left), height/(bottom-top)) / CAM.zoom;
+  for (const p of points) if (p) {
+    p[0] = cx + (p[0]-x)*scale;
+    p[1] = cy + (p[1]-y)*scale;
+  }
+  VIEW.cx += (cx-x)*scale;
+  VIEW.cy += (cy-y)*scale;
+  VIEW.F *= scale;
 }
 function proj(x, y, z) {
   const V = VIEW, vx = x - V.eye[0], vy = -y - V.eye[1], vz = z - V.eye[2];
@@ -729,7 +1468,7 @@ function drawShell(g, ev, src, beta, nowp) {
   let lastA = -1;
   for (let i = 0; i < n; i++) {
     let b = 0, gs = 1; const q = [0, 0, 0];
-    if (shaped) { b = tracePt(src, D[3 * i], D[3 * i + 1], D[3 * i + 2], r, q); if (b < 0) continue; }
+    if (shaped) { b = wavePoint(src, D, i, r, q); if (b < 0) continue; }
     else for (let k = 0; k < 3; k++) {
       const u = src[k] + D[3 * i + k] * r, Lx = dim[k], c = Math.floor(u / Lx), m = u - c * Lx;
       b += Math.abs(c); q[k] = c & 1 ? Lx - m : m; if (c) gs *= axisGain(c, RF[2 * k], RF[2 * k + 1]);
@@ -761,7 +1500,7 @@ function drawMesh(g, ev, src, beta, nowp) {
     let pSig = null, px = 0, py = 0;
     for (let i = 0, n = D.length / 3; i < n; i++) {
       let b = 0, sig = 0; const q = [0, 0, 0];
-      if (ROOM.shaped) { b = tracePt(src, D[3 * i], D[3 * i + 1], D[3 * i + 2], r, q); sig = TSIG; if (b < 0) b = 99; }
+      if (ROOM.shaped) { b = wavePoint(src, D, i, r, q); sig = TSIG; if (b < 0) b = 99; }
       else for (let k = 0; k < 3; k++) {
         const u = src[k] + D[3 * i + k] * r, Lx = dim[k], c = Math.floor(u / Lx), m = u - c * Lx;
         b += Math.abs(c); sig = sig * 64 + (c + 32); q[k] = c & 1 ? Lx - m : m; if (c && !axisGain(c, S.refl[2 * k], S.refl[2 * k + 1])) b = 99;
@@ -794,13 +1533,17 @@ function drawPlan(tms) {
   const bg = g.createRadialGradient(VIEW.cx, VIEW.cy, 10, VIEW.cx, VIEW.cy, Math.max(w, h) * 0.8);
   bg.addColorStop(0, '#121824'); bg.addColorStop(1, '#090b10'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
   const C8 = ROOM.V.map(c => proj(...c));
+  if (VIEW.fit) frameStudy(C8);
   const fight = dance() === 'fight', V = VIEW, eyeW = [V.eye[0], -V.eye[1], V.eye[2]];
-  // far walls (the ones facing away from you) get a faint fill so the box reads as a volume
-  const faces = ROOM.faces.filter(f => !f.floor && !f.open).map(f => [f.ix, f.n, f.c]);
-  for (const [ix, n, c] of faces) {
-    if ((eyeW[0] - c[0]) * n[0] + (eyeW[1] - c[1]) * n[1] + (eyeW[2] - c[2]) * n[2] > 0) continue;
-    if (ix.some(k => !C8[k])) continue;
-    g.fillStyle = 'rgba(201,206,216,0.035)'; poly(g, ix.map(k => C8[k]), true); g.fill();
+  if (ROOM.tree) drawPanelSurfaces(g, C8, eyeW);
+  else {
+    // far walls (the ones facing away from you) get a faint fill so the box reads as a volume
+    const faces = ROOM.faces.filter(f => !f.floor && !f.open).map(f => [f.ix, f.n, f.c]);
+    for (const [ix, n, c] of faces) {
+      if ((eyeW[0] - c[0]) * n[0] + (eyeW[1] - c[1]) * n[1] + (eyeW[2] - c[2]) * n[2] > 0) continue;
+      if (ix.some(k => !C8[k])) continue;
+      g.fillStyle = 'rgba(201,206,216,0.035)'; poly(g, ix.map(k => C8[k]), true); g.fill();
+    }
   }
   // floor: glow follows the level at your seat; 5 m grid
   const floors = ROOM.faces.filter(f => f.floor && f.ix.every(k => C8[k]));
@@ -830,21 +1573,23 @@ function drawPlan(tms) {
     for (const ev of events) {
       const age = (nowp - ev.born) / 1000 * ev.rate, r = age * C, life = lifeOf(ev);
       if (age > life) { ev.dead = true; continue; }
-      const fade = 1 - age / life, imgs = ev.big ? IMG3_CLAP : IMG3;
+      const fade = 1 - age / life;
+      const imgs = ROOM.tree ? ribbonImages([...p,z0],[...q,S.ez],0) : (ev.big ? IMG3_CLAP : IMG3);
+      if (slice && ROOM.tree) drawRibbonSlice(g,ev,[...p,z0],r,beta,fade);
       for (const im of imgs) {
         const amp = ev.amp * im.g * Math.pow(beta, im.o) * fade; if (amp < 0.02) continue;
         const dz = im.z - z0; if (Math.abs(dz) >= r) continue;
         const rh = Math.sqrt(r * r - dz * dz);
         g.strokeStyle = `rgba(226,180,92,${Math.min(0.95, amp * (im.o ? 0.7 : 1))})`;
         g.lineWidth = ev.big ? (im.o ? 1.3 : 2.2) : (im.o ? 1 : 1.7) * (ev.pitch < 48 ? 1.4 : 1);
-        if (slice) { poly(g, circle3(im.x, im.y, z0, rh, rh > 20 ? 64 : 40)); g.stroke(); }
+        if (slice && !ROOM.tree) { poly(g, circle3(im.x, im.y, z0, rh, rh > 20 ? 64 : 40)); g.stroke(); }
         const dq = Math.hypot(im.x - q[0], im.y - q[1], im.z - S.ez);
         hitSeat += amp * Math.exp(-Math.abs(dq - r) / 1.5);
       }
     }
     g.restore();
     // the direct sound's sphere seen whole, faintly, inside the room's outline
-    if (slice && shell.length > 2) {
+    if (slice && !ROOM.tree && shell.length > 2) {
       g.save(); poly(g, shell, true); g.clip();
       for (const ev of events) {
         if (ev.dead) continue;
@@ -857,11 +1602,21 @@ function drawPlan(tms) {
   }
   if (wmode !== 'slice') for (const ev of events) if (!ev.dead) (wmode === 'mesh' ? drawMesh : drawShell)(g, ev, [p[0], p[1], z0], beta, nowp);
   for (let i = events.length - 1; i >= 0; i--) if (events[i].dead) events.splice(i, 1);
-  // first-order reflection paths off all six surfaces (floor and ceiling too, now that there is height)
+  // First-order reflection paths from the source to the listener.
   const head = [q[0], q[1], S.ez], src = [p[0], p[1], z0];
   if ($('paths').checked) {
     g.setLineDash([3, 4]); g.lineWidth = 1;
-    for (let k = 0; k < ROOM.faces.length; k++) {
+    if (ROOM.tree) {
+      for (const im of ribbonImages(src, head, 0)) if (im.hit) {
+        const roof = im.face.role === 'roof', hit = proj(...im.hit);
+        g.strokeStyle = roof ? 'rgba(127,227,216,0.9)' : 'rgba(226,180,92,0.5)';
+        poly(g, [proj(...src), hit, proj(...head)]); g.stroke();
+        if (roof && hit) {
+          g.fillStyle = '#a9f2e8';
+          g.beginPath(); g.arc(hit[0], hit[1], 2.5, 0, 2*Math.PI); g.fill();
+        }
+      }
+    } else for (let k = 0; k < ROOM.faces.length; k++) {
       const f = ROOM.faces[k]; if (f.open) continue;
       const col = Math.abs(f.n[2]) < 0.7 ? '226,180,92' : '163,168,179', sd = f.n[0] * src[0] + f.n[1] * src[1] + f.n[2] * src[2] - f.d;
       const im = [src[0] - 2 * sd * f.n[0], src[1] - 2 * sd * f.n[1], src[2] - 2 * sd * f.n[2]], dv = [head[0] - im[0], head[1] - im[1], head[2] - im[2]];
@@ -874,6 +1629,10 @@ function drawPlan(tms) {
   }
   g.strokeStyle = 'rgba(226,180,92,0.65)'; g.lineWidth = 1.3; poly(g, [proj(...src), proj(...head)]); g.stroke();
   // trail on the floor
+  if (listenerPass) {
+    g.strokeStyle = 'rgba(106,174,232,0.55)'; g.lineWidth = 1.5;
+    poly(g, listenerPass.outline.map(([x, y]) => proj(x, y, 0.02))); g.stroke();
+  }
   if (waltzOn() && !fight && trail.length > 1) { g.strokeStyle = 'rgba(106,174,232,0.3)'; g.lineWidth = 1.5; poly(g, trail.map(t => proj(t[0], t[1], 0.01))); g.stroke(); }
   // figures, far to near
   const items = [{ z: proj(p[0], p[1], 1)?.[2] ?? 0, draw: () => fight ? drawHologram3D(tms) : drawPiano3D() },
@@ -881,7 +1640,7 @@ function drawPlan(tms) {
   if (fight && FG.opp) items.push({ z: proj(FG.opp[0], FG.opp[1], S.ez)?.[2] ?? 0, draw: drawRival3D });
   items.sort((a, b) => b.z - a.z).forEach(it => it.draw());
   // room edges on top, so the box stays crisp
-  g.strokeStyle = ROOM.shaped ? 'rgba(201,206,216,0.6)' : 'rgba(201,206,216,0.75)'; g.lineWidth = ROOM.shaped ? 1.1 : 1.6;
+  g.strokeStyle = ROOM.tree ? 'rgba(223,233,237,0.35)' : ROOM.shaped ? 'rgba(201,206,216,0.6)' : 'rgba(201,206,216,0.75)'; g.lineWidth = ROOM.shaped ? 1.1 : 1.6;
   for (const [a, b] of ROOM.edges) { if (C8[a] && C8[b]) { poly(g, [C8[a], C8[b]]); g.stroke(); } }
   const lab = ROOM.floorV.map(k => C8[k]).filter(Boolean).sort((a, b) => b[1] - a[1])[0]; if (lab) { g.font = '11px "JetBrains Mono", monospace'; g.fillStyle = COL.ink3; g.textBaseline = 'top'; g.textAlign = 'left'; g.fillText(`${L} × ${W} × ${H} m`, lab[0] + 6, lab[1] + 6); }
   if (ROOM.openC && S.openName) {
@@ -1023,6 +1782,46 @@ function drawTrace() {
 
 // ---------- UI wiring --------------------------------------------------------
 let IMG3 = [], IMG3_CLAP = [];
+const dimensionKeys = ['L', 'W', 'H', 'A'];
+function renderArchControls() {
+  const fields = $('archFields');
+  fields.replaceChildren();
+  const specs = SHAPES[S.shape]?.params || {};
+  for (const [key, spec] of Object.entries(specs)) {
+    const label = document.createElement('label'), slider = document.createElement('input');
+    const output = document.createElement('output');
+    slider.id = 'arch-' + key;
+    label.htmlFor = slider.id;
+    output.setAttribute('for', slider.id);
+    slider.type = 'range';
+    Object.assign(slider, { min: spec.min, max: spec.max, step: spec.step, value: S.params[key] });
+    output.textContent = slider.value + spec.unit;
+    slider.oninput = () => {
+      S.params[key] = +slider.value;
+      output.textContent = slider.value + spec.unit;
+      refreshGeometry();
+    };
+    slider.onchange = saveDesignLink;
+    label.append(spec.label, output, slider);
+    fields.append(label);
+  }
+  if (!S.shape) fields.textContent = 'Use length, width and height above to shape this rectangular room.';
+}
+function saveDesignLink() {
+  const design = new URLSearchParams({room: S.preset});
+  for (const k of dimensionKeys) if (S[k] !== PRESETS[S.preset][k]) design.set(k, S[k]);
+  for (const [k, spec] of Object.entries(SHAPES[S.shape]?.params || {}))
+    if (S.params[k] !== spec.value) design.set(k, S.params[k]);
+  history.replaceState(null, '', '#' + design);
+}
+function restoreDesignLink() {
+  const design = new URLSearchParams(location.hash.slice(1));
+  const name = design.get('room');
+  const known = Object.hasOwn(PRESETS, name);
+  if (known) $('architecture').open = !window.nocturneTracks || [...design.keys()].length > 1;
+  applyPreset(known ? name : 'marble', design);
+}
+
 function refreshGeometry(rebuild = true) {
   for (const k of ['L', 'W', 'H', 'A']) $(k).value = S[k];
   $('Lo').textContent = S.L + ' m'; $('Wo').textContent = S.W + ' m'; $('Ho').textContent = S.H + ' m';
@@ -1031,9 +1830,17 @@ function refreshGeometry(rebuild = true) {
   $('Ao').textContent = (between ? MATERIALS[i - 1].name + '–' + MATERIALS[i].name : mat.name) + ' · α ' + a.toFixed(2);
   for (const b of $('Aticks').children) b.classList.toggle('on', b.dataset.name === mat.name);
   buildRoom();
+  const openingArea = ROOM.faces.reduce((sum,f) => sum + (f.open ? f.area : 0), 0);
+  const preset = PRESETS[S.preset], specs = SHAPES[S.shape]?.params || {};
+  const edited = dimensionKeys.some(k => S[k] !== preset[k]) ||
+    Object.entries(specs).some(([k,spec]) => S.params[k] !== spec.value);
+  $('roomSel').title = edited ? 'Customized ' + $('roomSel').selectedOptions[0].text : $('roomSel').selectedOptions[0].title;
+  $('archMeasures').textContent = (edited ? 'Customized · ' : '') + Math.round(ROOM.vol).toLocaleString() + ' m³' +
+    (S.openName ? ' · ' + Number(openingArea.toFixed(2)) + ' m² ' + S.openName : '');
   for (const pt of [S.piano, S.seat]) { pt[0] = Math.max(0.6, Math.min(S.L - 0.6, pt[0])); pt[1] = Math.max(Math.min(0.8, S.W / 2), Math.min(S.W - Math.min(0.8, S.W / 2), pt[1])); }
   if (ROOM.shaped) { pullInside(S.piano, S.pz, 0.5); pullInside(S.seat, S.ez + 0.25, 0.4); }
-  if (!waltzOn()) facePiano();
+  if (!waltzOn() && !listenerPass) facePiano();
+  if (listenerPass && (listenerPass.room !== ROOM || listenerPass.seat !== S.seat)) startListenerPass();
   IMG3 = images3Dlist([S.piano[0], S.piano[1], S.pz], 2); IMG3_CLAP = images3Dlist([S.piano[0], S.piano[1], S.pz], 4);
   if (rebuild) scheduleIR();
 }
@@ -1046,19 +1853,42 @@ function showStats() {
   $('rc').textContent = st.ac.rc.toFixed(1);
   const dr = 20 * Math.log10(st.ac.rc / st.dist); $('dr').innerHTML = (dr > 0 ? '+' : '') + dr.toFixed(1);
 }
-function applyPreset(name) {
+function applyPreset(name, design = new URLSearchParams()) {
   const p = PRESETS[name]; $('roomSel').value = name; $('roomSel').title = $('roomSel').selectedOptions[0]?.title || '';
+  document.body.classList.toggle('design-study', !!p.view?.fit);
   Object.assign(S, { L: p.L, W: p.W, H: p.H, A: p.A, piano: [...p.piano], seat: [...p.seat], refl: p.refl || SOLID, early: p.early || 0.2, tail: p.tail || 1, openName: p.openName || '', shape: p.shape || null });
+  const reframe = S.preset !== name && (p.view || PRESETS[S.preset].view);
+  S.preset = name;
+  if (reframe) resetRoomView();
+  S.params = {};
+  // Let native range inputs enforce the same bounds and precision for bookmarked designs.
+  function restored(key, spec, fallback) {
+    const raw = design.get(key);
+    if (raw === null || !raw.trim() || !Number.isFinite(Number(raw))) return fallback;
+    const range = document.createElement('input');
+    range.type = 'range';
+    Object.assign(range, {min: spec.min, max: spec.max, step: spec.step, value: raw});
+    return range.valueAsNumber;
+  }
+  for (const k of dimensionKeys) S[k] = restored(k, $(k), S[k]);
+  for (const [key, spec] of Object.entries(SHAPES[S.shape]?.params || {}))
+    S.params[key] = restored(key, spec, spec.value);
+  renderArchControls();
   refreshGeometry();
 }
+$('archReset').onclick = () => { applyPreset(S.preset); saveDesignLink(); };
+window.addEventListener('hashchange', restoreDesignLink);
 for (const m of MATERIALS) {
   const b = document.createElement('button'); b.type = 'button'; b.textContent = m.name; b.dataset.name = m.name;
   b.style.left = m.pos + '%'; b.title = `${m.name}: average absorption α ${m.al.toFixed(2)}`;
-  b.addEventListener('click', () => { S.A = m.pos; $('roomSel').value = 'custom'; refreshGeometry(); });
+  b.addEventListener('click', () => { S.A = m.pos; refreshGeometry(); saveDesignLink(); });
   $('Aticks').append(b);
 }
-for (const k of ['L', 'W', 'H', 'A']) $(k).addEventListener('input', e => { S[k] = +e.target.value; $('roomSel').value = 'custom'; refreshGeometry(); });
-$('roomSel').addEventListener('change', e => { if (PRESETS[e.target.value]) applyPreset(e.target.value); });
+for (const k of dimensionKeys) {
+  $(k).oninput = () => { S[k] = +$(k).value; refreshGeometry(); };
+  $(k).onchange = saveDesignLink;
+}
+$('roomSel').addEventListener('change', e => { applyPreset(e.target.value); saveDesignLink(); });
 $('roomOn').addEventListener('change', applyRoomToggle);
 $('play').addEventListener('click', () => { if (!ctx) return; playing ? pause() : play(); });
 $('clap').addEventListener('click', () => {
@@ -1074,6 +1904,10 @@ plan.addEventListener('pointerdown', e => {
   const near = (x, y, z) => { const c = proj(x, y, z); return c ? Math.hypot(c[0] - e.clientX, c[1] - e.clientY) : 1e9; };
   const dp = Math.min(near(S.piano[0], S.piano[1], 1), near(S.piano[0], S.piano[1], 0)), ds = waltzOn() ? 1e9 : Math.min(near(S.seat[0], S.seat[1], S.ez), near(S.seat[0], S.seat[1], 0));
   drag = dp < 26 && dp <= ds ? 'piano' : ds < 26 ? 'seat' : { x: e.clientX, y: e.clientY, yaw: CAM.yaw, pitch: CAM.pitch };
+  if (listenerPass && typeof drag === 'string') {
+    stopListenerPass();
+    $('passPitch').textContent = 'Release to start the next pass';
+  }
   try { plan.setPointerCapture(e.pointerId); } catch (err) {} plan.classList.add('dragging');
 });
 plan.addEventListener('pointermove', e => {
@@ -1082,12 +1916,15 @@ plan.addEventListener('pointermove', e => {
   if (CAM.top) { CAM.top = false; $('v3d').checked = true; }
   CAM.yaw = drag.yaw - (e.clientX - drag.x) * 0.006; CAM.pitch = Math.max(0.05, Math.min(1.5, drag.pitch + (e.clientY - drag.y) * 0.005));
 });
-const endDrag = () => { drag = null; plan.classList.remove('dragging'); };
+const endDrag = () => {
+  if (typeof drag === 'string' && $('dopplerOn').checked) startListenerPass();
+  drag = null; plan.classList.remove('dragging');
+};
 plan.addEventListener('pointerup', endDrag); plan.addEventListener('pointercancel', endDrag);
 plan.addEventListener('wheel', e => { e.preventDefault(); CAM.zoom = Math.max(0.25, Math.min(3, CAM.zoom * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
 document.querySelectorAll('input[name=songspeed]').forEach(r => r.addEventListener('change', () => { for (const e of events) if (e.kind !== 'clap') e.dead = true; songEvent = null; }));
 document.querySelectorAll('input[name=view]').forEach(r => r.addEventListener('change', e => { CAM.top = e.target.value === 'top'; }));
-$('vReset').addEventListener('click', () => { Object.assign(CAM, { yaw: 0.55, pitch: 0.42, zoom: 1, top: false }); $('v3d').checked = true; });
+$('vReset').addEventListener('click', resetRoomView);
 
 const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 // The audio clock moves in steps of one audio buffer (5 ms on built-in speakers, more on Bluetooth), so two video
@@ -1107,7 +1944,7 @@ function drawProgress() { if (!buf) return; const t = now(); $('tcur').textConte
 // ---------- waltz ------------------------------------------------------------
 // Half a turn per bar, timed to the pianist's own bass notes (so it follows the rubato);
 // one lap of the room's "line of dance" every 24 turns. Idle (no music): 30 turns a minute.
-const dance = () => document.querySelector('input[name=dance]:checked').value;
+const dance = () => $('dopplerOn').checked ? 'off' : document.querySelector('input[name=dance]:checked').value;
 const srcName = () => dance() === 'fight' ? 'hologram' : (PIECES[piece].src || (PIECES[piece].file && !PIECES[piece].analyse ? 'piano' : 'speaker'));
 function setSrcLabels() { document.querySelectorAll('.srcname').forEach(e => e.textContent = srcName()); }
 const waltzOn = () => dance() !== 'off';          // 'dancing' (waltz or tango)
@@ -1170,6 +2007,7 @@ function stepTango(ts) {
   TG.s = TG.from.s + (TG.to.s - TG.from.s) * u; TG.fig = TG.from.fig + (TG.to.fig - TG.from.fig) * u;
   const tr = tangoTrack(TG.s);
   S.seat[0] = tr.x; S.seat[1] = tr.y; S.face = tr.head + TG.fig;
+  if (ROOM.shaped) pullInside(S.seat, S.ez + 0.25, 0.4);
   trail.push([...S.seat]); if (trail.length > 240) trail.shift();
   if (ts - lastIRTs > 40) { lastIRTs = ts; rebuildAudioIR(); showStats(); }
 }
@@ -1240,14 +2078,233 @@ document.querySelectorAll('input[name=dance]').forEach(r => r.addEventListener('
   $('planHint').textContent = HINTS[d]; setSrcLabels();
   if (d !== 'fight') holoReset();
   if (d === 'off') { facePiano(); scheduleIR(); return; }
-  if (d === 'fight') { FG.k = -1; FG.c = null; applyPreset('showroom'); return; }
+  if (d === 'fight') { FG.k = -1; FG.c = null; applyPreset('showroom'); saveDesignLink(); return; }
   const want = d === 'waltz' ? 'valse' : 'tango';
   if (piece !== want && piece !== 'user' && !playing) { $(want === 'valse' ? 'pcValse' : 'pcTango').checked = true; switchPiece(want); }
 }));
 
+// Phase counts turns. The tangent is the derivative with respect to radians,
+// so multiplying it by 2π times the cycle frequency gives velocity in m/s.
+const fullTurn = 2 * Math.PI;
+const motionClock = () => ctx ? ctx.currentTime : performance.now() / 1000;
+let listenerPass = null, delayLoop = null;
+const phaseAt = (pass, time) => pass.phase + (time - pass.epoch) * pass.hz;
+const passHz = maxTangent => maxTangent > 0 ? Number($('passSpeed').value) / (fullTurn * maxTangent) : 0;
+
+function samplePass(pass, phase) {
+  const angle = fullTurn * phase, sin = Math.sin(angle), cos = Math.cos(angle);
+  // For the straight path, the cross-axis vector has zero length.
+  const cross = pass.shape === 'eight' ? 2 * sin * cos : cos;
+  const crossSlope = pass.shape === 'eight' ? 2 * Math.cos(2 * angle) : -sin;
+  return {
+    x: pass.cx + pass.rx * sin + pass.sx * cross,
+    y: pass.cy + pass.ry * sin + pass.sy * cross,
+    tx: pass.rx * cos + pass.sx * crossSlope,
+    ty: pass.ry * cos + pass.sy * crossSlope,
+  };
+}
+
+function earClearance(face, x, y) {
+  const [nx, ny, nz] = face.n;
+  return face.d - nx*x - ny*y - nz*S.ez - 0.18 * Math.hypot(nx, ny);
+}
+
+// The oval's extent along a wall normal is hypot(n·major, n·minor).
+// A figure eight with cross term b sin(2θ) fits inside an ellipse of
+// half-width 2b because |sin(2θ)| <= 2|cos(θ)|.
+function fitLoopWidth(cx, cy, ux, uy, major, eight) {
+  let width = Math.abs(major) * 0.65;
+  for (const face of (ROOM.walkFaces || ROOM.faces)) {
+    const [nx, ny] = face.n;
+    const across = Math.abs(-nx*uy + ny*ux);
+    if (across < 1e-10) continue;
+    const clearance = Math.max(0, earClearance(face, cx, cy));
+    const along = major * (nx*ux + ny*uy);
+    const available = Math.sqrt(Math.max(0, clearance**2 - along**2));
+    width = Math.min(width, available / (across * (eight ? 2 : 1)));
+  }
+  return width * 0.96;
+}
+
+function startListenerPass() {
+  if ((ROOM.walkFaces || ROOM.faces).some(face => earClearance(face, ...S.seat) < -1e-8)) pullInside(S.seat, S.ez, 0.2);
+  if (!listenerPass || listenerPass.room !== ROOM || listenerPass.seat !== S.seat) facePiano();
+  const [x, y] = S.seat;
+  let dx = S.piano[0] - x, dy = S.piano[1] - y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 0.01) {
+    dx = S.L >= S.W ? 1 : 0;
+    dy = 1 - dx;
+  } else {
+    // Aim just beside the instrument so the listener passes it on one side.
+    const miss = Math.min(1.4, 0.1 * S.W, 0.2 * distance);
+    const nx = -dy / distance, ny = dx / distance;
+    dx += nx * miss;
+    dy += ny * miss;
+  }
+  const length = Math.hypot(dx, dy), ux = dx / length, uy = dy / length;
+  let near = -Infinity, far = Infinity;
+  for (const face of (ROOM.walkFaces || ROOM.faces)) {
+    const n = face.n;
+    const slope = n[0] * ux + n[1] * uy;
+    if (Math.abs(slope) < 1e-10) continue;
+    const space = earClearance(face, x, y);
+    if (slope > 0) far = Math.min(far, space / slope);
+    else near = Math.max(near, space / slope);
+  }
+  const shape = $('passShape').value;
+  let major = Math.max(0, (far - near) / 2), mid = (far + near) / 2;
+  let phase = major ? Math.asin(Math.max(-1, Math.min(1, -mid / major))) / fullTurn : 0;
+  let width = 0;
+  if (shape !== 'straight') {
+    // Start the loop at the current seat. Turn into the room when the source
+    // is immediately against the near wall.
+    const reach = far >= -near * 0.45 ? far : near;
+    major = 0.46 * reach;
+    mid = major;
+    phase = -0.25;
+    width = fitLoopWidth(x + ux*mid, y + uy*mid, ux, uy, major, shape === 'eight');
+  }
+  const maxTangent = shape === 'eight' ? Math.hypot(major, 2*width) : Math.max(Math.abs(major), width);
+  listenerPass = {
+    shape, cx: x + ux * mid, cy: y + uy * mid, rx: ux * major, ry: uy * major,
+    sx: -uy * width, sy: ux * width, maxTangent,
+    phase, epoch: motionClock(), hz: passHz(maxTangent), room: ROOM, seat: S.seat,
+  };
+  const phases = shape === 'straight' ? [-0.25, 0.25] : Array.from({length: 97}, (_, i) => i/96);
+  listenerPass.outline = phases.map(p => {
+    const point = samplePass(listenerPass, p);
+    return [point.x, point.y];
+  });
+  configurePassDelays();
+}
+
+function placeListener(pass, phase) {
+  const point = samplePass(pass, phase);
+  S.seat[0] = point.x;
+  S.seat[1] = point.y;
+  return point;
+}
+
+function stopListenerPass() {
+  if (!listenerPass) return;
+  placeListener(listenerPass, phaseAt(listenerPass, motionClock()));
+  listenerPass = null;
+  configurePassDelays();
+}
+
+// Drive the existing delay AudioParams with one looping four-channel control
+// signal. Its samples are travel times in seconds. The audio thread interpolates
+// them even between animation frames. The music source keeps its own clock.
+function configurePassDelays() {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  if (delayLoop) {
+    delayLoop.source.stop(t);
+    delayLoop.source.disconnect();
+    delayLoop.splitter.disconnect();
+    delayLoop = null;
+  }
+  const params = [dirDelay[0].delayTime, dirDelay[1].delayTime, earlyDelay.delayTime, tailDelay.delayTime];
+  const [leftX, leftY] = leftVec(S.face);
+  const ex = leftX * S.ear, ey = leftY * S.ear, dz = S.ez - S.pz;
+  function delaysAt(x, y) {
+    const dx = x - S.piano[0], dy = y - S.piano[1];
+    const direct = Math.hypot(dx, dy, dz) / C;
+    return [Math.hypot(dx + ex, dy + ey, dz) / C, Math.hypot(dx - ex, dy - ey, dz) / C,
+      Math.max(0, direct - 0.001), direct];
+  }
+  const stationary = delaysAt(...S.seat);
+  const moving = listenerPass && listenerPass.hz > 0;
+  params.forEach((param, i) => {
+    param.cancelScheduledValues(t);
+    param.setValueAtTime(moving ? 0 : stationary[i], t);
+  });
+  if (!moving) return;
+
+  const pass = listenerPass, samples = 2048;
+  const cycle = ctx.createBuffer(params.length, samples, ctx.sampleRate);
+  const channels = params.map((_, i) => cycle.getChannelData(i));
+  for (let i = 0; i < samples; i++) {
+    const point = samplePass(pass, i / samples);
+    const delays = delaysAt(point.x, point.y);
+    for (let ch = 0; ch < channels.length; ch++) channels[ch][i] = delays[ch];
+  }
+  const source = ctx.createBufferSource(), splitter = ctx.createChannelSplitter(params.length);
+  source.buffer = cycle;
+  source.loop = true;
+  source.playbackRate.value = cycle.duration * pass.hz;
+  source.connect(splitter);
+  params.forEach((param, i) => splitter.connect(param, i));
+  const phase = phaseAt(pass, t);
+  source.start(t, (phase - Math.floor(phase)) * cycle.duration);
+  delayLoop = { source, splitter };
+}
+
+function stepListenerPass(ts) {
+  const pass = listenerPass, phase = phaseAt(pass, motionClock());
+  const point = placeListener(pass, phase);
+  if (ts - lastIRTs < 110) return;
+  lastIRTs = ts;
+  const dx = S.seat[0] - S.piano[0], dy = S.seat[1] - S.piano[1];
+  const distance = Math.hypot(dx, dy, S.ez - S.pz);
+  const radial = fullTurn * pass.hz * (dx * point.tx + dy * point.ty) / distance;
+  const percent = Math.round(-1000 * radial / C) / 10;
+  const direction = percent === 0 ? (pass.hz ? 'Level pitch' : 'Still')
+    : radial < 0 ? 'Approaching' : 'Receding';
+  $('passPitch').textContent = direction + ' · direct pitch ' + (percent > 0 ? '+' : '') + percent.toFixed(1) + '%';
+  if (pass.hz > 0) { rebuildAudioIR(); showStats(); }
+}
+
+$('passSpeed').addEventListener('input', () => {
+  $('passSpeedValue').textContent = $('passSpeed').value + ' m/s';
+  if (!listenerPass) return;
+  const t = motionClock(), pass = listenerPass;
+  pass.phase = phaseAt(pass, t);
+  pass.epoch = t;
+  pass.hz = passHz(pass.maxTangent);
+  placeListener(pass, pass.phase);
+  if (delayLoop && pass.hz > 0) {
+    delayLoop.source.playbackRate.setValueAtTime(delayLoop.source.buffer.duration * pass.hz, t);
+  } else {
+    configurePassDelays();
+    scheduleIR();
+  }
+});
+
+$('passShape').addEventListener('change', () => {
+  if (!listenerPass) return;
+  placeListener(listenerPass, phaseAt(listenerPass, motionClock()));
+  startListenerPass();
+  scheduleIR();
+});
+
+$('dopplerOn').addEventListener('change', () => {
+  const enabled = $('dopplerOn').checked;
+  $('passControls').hidden = !enabled;
+  for (const radio of document.querySelectorAll('input[name=dance]')) radio.disabled = enabled;
+  if (enabled) {
+    holoReset();
+    startListenerPass();
+  } else {
+    stopListenerPass();
+    lastWaltzTs = null;
+    lastBeatPos = null;
+    if (!waltzOn()) facePiano();
+  }
+  setSrcLabels();
+  $('planHint').textContent = enabled
+    ? 'The listener follows the blue path. Switch trajectories while listening, or drag your head or the source to set a new path.'
+    : HINTS[dance()];
+  applyRoomToggle();
+  scheduleIR();
+});
+
+
 function frame(ts) {
   updateVT(ts);
-  if (dance() === 'waltz') stepWaltz(ts); else if (dance() === 'tango') stepTango(ts); else if (dance() === 'fight') { stepFight(ts); stepHolo(ts); }
+  if (listenerPass) stepListenerPass(ts);
+  else if (dance() === 'waltz') stepWaltz(ts); else if (dance() === 'tango') stepTango(ts); else if (dance() === 'fight') { stepFight(ts); stepHolo(ts); }
   if (playing) {
     const t = VT;
     while (onsetIdx < ONSETS.length && ONSETS[onsetIdx][0] <= t) {
@@ -1268,7 +2325,7 @@ function frame(ts) {
 }
 
 // ---------- boot -------------------------------------------------------------
-layout(); refreshGeometry(false); buildEarly(44100); showStats();
+layout(); restoreDesignLink(); clearTimeout(irTimer); buildEarly(44100); showStats();
 new ResizeObserver(() => layout()).observe(document.querySelector('.stage')); window.addEventListener('resize', layout);
 requestAnimationFrame(frame);
 // audio per piece: fetched once, decoded on first play (decoding needs the AudioContext, which needs a click)
@@ -1285,7 +2342,11 @@ async function ensureBuffer(name) {
     const ab = await fetchPiece(name);
     btn.textContent = 'Decoding…';
     try { DECODED[name] = await ctx.decodeAudioData(ab.slice(0)); DECODED[name].format = PIECES[name].analyse ? 'recording' : 'FLAC, lossless · 16-bit / 44.1 kHz, dry, mono (the room adds the stereo)'; }
-    catch (e) { console.warn('FLAC decode failed, using MP3:', e); DECODED[name] = await ctx.decodeAudioData(await getBytes(PIECES[name].fallback)); DECODED[name].format = 'MP3 112 kbps · dry, mono (the room adds the stereo)'; }
+    catch (e) {
+      if (!PIECES[name].fallback) throw e;
+      DECODED[name] = await ctx.decodeAudioData(await getBytes(PIECES[name].fallback));
+      DECODED[name].format = 'Fallback recording';
+    }
     if (PIECES[name].analyse) {                   // a recording, not a MIDI render: fold to mono and find its beat here
       btn.textContent = 'Finding the beat…'; await new Promise(r => setTimeout(r, 30));
       const dec = DECODED[name], mono = ctx.createBuffer(1, dec.length, dec.sampleRate), m = mono.getChannelData(0);

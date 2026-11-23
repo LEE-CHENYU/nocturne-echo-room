@@ -1,17 +1,16 @@
-"""Build the "Nocturne Echo Room" artifact page from its source.
+"""Build the Nocturne Echo Room web app from its source.
 
     python -s web/build.py            # template.html + onsets*.json -> index.html, then syntax-check the script
     python -s web/build.py --assets   # also re-render every piece's audio and onset list from its MIDI first
 
 Source of truth is web/template.html (all UI, acoustics, audio and dance code). index.html is generated:
 the __ONSETS*__ placeholders are replaced by the note-onset lists the dance modes and the level trace use.
-Publish index.html with the supporting audio files; the live artifact is
-https://claude.ai/artifact/Mm5U22LRLDJBuZTCbCr5fr
+Serve index.html and its audio files from the same directory.
 
 --assets needs fluidsynth and ffmpeg on PATH, the Salamander SF2 in soundfonts/, and the MIDI files in midi/.
 Per piece it writes:
   out/<dry>.wav                 FluidSynth render, built-in reverb and chorus off (the page adds the room)
-  web/<name>_dry_lossless.mp4   16-bit mono FLAC in an MP4 container (artifacts refuse .flac files)
+  web/<name>_dry_lossless.mp4   16-bit mono FLAC in an MP4 container
   web/<name>_dry.mp3            112 kbps fallback for browsers without FLAC
   web/<onsets>.json             [[time_s, velocity, lowest_pitch], ...], notes within 30 ms merged
 """
@@ -69,6 +68,10 @@ def build_assets():
 
 def build_page():
     s = (WEB / "template.html").read_text()
+    for marker, source in [("__ARCHITECTURE__", "architecture.js"), ("__LOFT__", "loft.js"),
+                           ("__STUDIES__", "studies.js"), ("__DOPPLER__", "doppler.js")]:
+        assert s.count(marker) == 1, f"{marker} should appear once in template.html"
+        s = s.replace(marker, (WEB / source).read_text())
     # longest placeholder first: __ONSETS__ is a prefix-free match but keep the order explicit
     for _, (_, _, js, ph) in sorted(PIECES.items(), key=lambda kv: -len(kv[1][3])):
         assert s.count(ph) == 1, f"{ph} should appear once in template.html"
